@@ -28,40 +28,47 @@ export function useSelfHaul() {
     const supabase = createClient();
 
     const handleUserSession = async (user: { id: string; email?: string }) => {
-      try {
-        // Set basic user info synchronously so email & moniker are immediately available
-        setState((prev) => ({
-          ...prev,
-          user: prev.user && prev.user.id === user.id ? prev.user : {
-            id: user.id,
-            email: user.email || '',
-            fullName: user.email?.split('@')[0] || 'Seeker',
-            moniker: user.email?.split('@')[0] || 'Seeker',
-            intent: 'Deep Self-Reflection',
-          },
-        }));
+      if (!isMounted) return;
 
+      // 1. Immediately set user and advance stage to 'dump' synchronously (0ms delay)
+      setState((prev) => {
+        const shouldAdvance = prev.stage === 'login' || prev.stage === 'landing' || prev.stage === 'onboarding';
+        const nextStage = shouldAdvance ? 'dump' : prev.stage;
+
+        const updatedUser = {
+          id: user.id,
+          email: user.email || '',
+          fullName: prev.user?.fullName || user.email?.split('@')[0] || 'Seeker',
+          moniker: prev.user?.moniker || user.email?.split('@')[0] || 'Seeker',
+          intent: prev.user?.intent || 'Deep Self-Reflection',
+        };
+
+        return {
+          ...prev,
+          user: updatedUser,
+          stage: nextStage,
+        };
+      });
+
+      // 2. Fetch full profile asynchronously in background without delaying stage transition
+      try {
         const profile = await getUserProfileFromSupabase(user.id);
-        if (!isMounted) return;
+        if (!isMounted || !profile) return;
 
         setState((prev) => {
-          const shouldAdvance = prev.stage === 'login' || prev.stage === 'landing' || prev.stage === 'onboarding';
-          const nextStage = shouldAdvance ? 'dump' : prev.stage;
-
+          if (!prev.user) return prev;
           return {
             ...prev,
             user: {
-              id: user.id,
-              email: user.email || '',
-              fullName: profile?.fullName || user.email?.split('@')[0] || 'Seeker',
-              moniker: profile?.moniker || profile?.fullName || user.email?.split('@')[0] || 'Seeker',
-              intent: profile?.intent || 'Deep Self-Reflection',
+              ...prev.user,
+              fullName: profile.fullName || prev.user.fullName,
+              moniker: profile.moniker || profile.fullName || prev.user.moniker,
+              intent: profile.intent || prev.user.intent,
             },
-            stage: nextStage,
           };
         });
       } catch (err) {
-        console.warn('Failed to handle user session profile:', err);
+        console.warn('Failed to load user profile details:', err);
       }
     };
 
@@ -103,12 +110,12 @@ export function useSelfHaul() {
 
     initialize();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!isMounted) return;
       if (session?.user) {
         handleUserSession(session.user);
-      } else {
-        setState((prev) => ({ ...prev, user: null }));
+      } else if (event === 'SIGNED_OUT') {
+        setState((prev) => ({ ...prev, user: null, stage: 'landing' }));
       }
     });
 
