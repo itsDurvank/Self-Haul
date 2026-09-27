@@ -30,27 +30,27 @@ export function useSelfHaul() {
     const handleUserSession = async (user: { id: string; email?: string }) => {
       if (!isMounted) return;
 
-      // 1. Immediately set user and advance stage to 'dump' synchronously (0ms delay)
-      setState((prev) => {
-        const shouldAdvance = prev.stage === 'login' || prev.stage === 'landing' || prev.stage === 'onboarding';
-        const nextStage = shouldAdvance ? 'dump' : prev.stage;
+      const defaultUser = {
+        id: user.id,
+        email: user.email || '',
+        fullName: user.email?.split('@')[0] || 'Seeker',
+        moniker: user.email?.split('@')[0] || 'Seeker',
+        intent: 'Deep Self-Reflection',
+      };
 
-        const updatedUser = {
-          id: user.id,
-          email: user.email || '',
-          fullName: prev.user?.fullName || user.email?.split('@')[0] || 'Seeker',
-          moniker: prev.user?.moniker || user.email?.split('@')[0] || 'Seeker',
-          intent: prev.user?.intent || 'Deep Self-Reflection',
-        };
+      // 1. Synchronously set user & advance to dump stage if on entry stage
+      setState((prev) => {
+        const isEntryStage = !prev.stage || prev.stage === 'landing' || prev.stage === 'login' || prev.stage === 'onboarding';
+        const nextStage = isEntryStage ? 'dump' : prev.stage;
 
         return {
           ...prev,
-          user: updatedUser,
+          user: prev.user && prev.user.id === user.id ? prev.user : defaultUser,
           stage: nextStage,
         };
       });
 
-      // 2. Fetch full profile asynchronously in background without delaying stage transition
+      // 2. Fetch full profile details asynchronously in background
       try {
         const profile = await getUserProfileFromSupabase(user.id);
         if (!isMounted || !profile) return;
@@ -73,7 +73,7 @@ export function useSelfHaul() {
     };
 
     const initialize = async () => {
-      // 1. Load local draft state
+      // 1. Load local draft state from localStorage
       try {
         if (typeof window !== 'undefined') {
           const saved = localStorage.getItem(STORAGE_KEY);
@@ -92,15 +92,17 @@ export function useSelfHaul() {
         console.warn('Failed to load self-haul state from storage:', e);
       }
 
-      // 2. Fetch active Supabase user session
+      // 2. Fetch active Supabase user using getUser()
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) console.warn('Supabase getSession error:', error);
-        if (session?.user && isMounted) {
-          await handleUserSession(session.user);
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) console.warn('Supabase getUser error:', error.message);
+        if (user && isMounted) {
+          await handleUserSession(user);
+        } else if (isMounted) {
+          setState((prev) => ({ ...prev, user: null }));
         }
       } catch (err) {
-        console.warn('getSession catch error:', err);
+        console.warn('getUser catch error:', err);
       } finally {
         if (isMounted) {
           setIsHydrated(true);
@@ -108,12 +110,19 @@ export function useSelfHaul() {
       }
     };
 
+    // Safety timeout: ensure loading spinner never hangs more than 2.5s
+    const hydrationTimer = setTimeout(() => {
+      if (isMounted) {
+        setIsHydrated(true);
+      }
+    }, 2500);
+
     initialize();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
       if (session?.user) {
-        handleUserSession(session.user);
+        await handleUserSession(session.user);
       } else if (event === 'SIGNED_OUT') {
         setState((prev) => ({ ...prev, user: null, stage: 'landing' }));
       }
@@ -121,6 +130,7 @@ export function useSelfHaul() {
 
     return () => {
       isMounted = false;
+      clearTimeout(hydrationTimer);
       subscription.unsubscribe();
     };
   }, []);
