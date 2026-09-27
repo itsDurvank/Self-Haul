@@ -479,18 +479,22 @@ ${similarEntriesFormatted}`;
  */
 export async function generateInsightGapAnalysis(
   sessionExtractions: ExtractedAnalysis[],
-  profileSummary?: string
+  profileSummary?: string,
+  vectorMatches?: ExtractedAnalysis[]
 ): Promise<string> {
-  const prompt = `Generate an 'AI Insight' consultant-style gap analysis (under 150 words) based on the current session's structured extractions.
+  const prompt = `Generate an 'AI Insight' consultant-style gap analysis (under 150 words) based on the user's current session and relevant past history.
 
-Profile Memory So Far:
+Long-Term Profile Memory So Far:
 "${profileSummary || 'Cold start - no previous summary profile.'}"
 
 Current Session Extractions (JSON):
 ${JSON.stringify(sessionExtractions, null, 2)}
 
+Relevant Past Vector Matches (RAG Context):
+${JSON.stringify(vectorMatches || [], null, 2)}
+
 Rules:
-1. Identify the SINGLE highest-leverage gap (e.g. insight without action, external blame despite available agency, repeated unresolved concern).
+1. Identify the SINGLE highest-leverage gap (e.g. insight without action, external blame despite available agency, repeated unresolved concern across sessions).
 2. State the gap plainly without therapeutic softening or clinical/diagnostic jargon.
 3. End with ONE direct reframe or targeted question.
 4. If emotional distress/hopelessness signals are high across entries, adopt a supportive tone instead of confrontation.`;

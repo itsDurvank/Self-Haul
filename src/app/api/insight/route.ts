@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { generateInsightGapAnalysis } from '@/lib/gemini/client';
+import { generateInsightGapAnalysis, generateTextEmbedding } from '@/lib/gemini/client';
 
 export async function POST(req: NextRequest) {
   try {
@@ -59,8 +59,27 @@ export async function POST(req: NextRequest) {
 
     const profileSummary = snapshotRow?.summary_text || '';
 
-    // 4. Generate on-demand consultant gap analysis
-    const insightText = await generateInsightGapAnalysis(sessionExtractions, profileSummary);
+    // 4. Vector RAG Retrieval: Search past entries relevant to current session concerns
+    let vectorMatches: any[] = [];
+    try {
+      const topConcern = sessionExtractions[0]?.concern?.stated_concern || sessionExtractions[0]?.input?.raw_text;
+      if (topConcern) {
+        const queryEmbedding = await generateTextEmbedding(topConcern);
+        const { data: rpcMatches } = await supabase.rpc('match_question_analysis', {
+          query_embedding: queryEmbedding,
+          match_threshold: 0.4,
+          match_count: 5,
+        });
+        if (Array.isArray(rpcMatches)) {
+          vectorMatches = rpcMatches.map((m: any) => m.analysis_json).filter(Boolean);
+        }
+      }
+    } catch (e) {
+      console.warn('Vector RAG search for insight warning:', e);
+    }
+
+    // 5. Generate on-demand consultant gap analysis combining session, RAG vector matches, & memory
+    const insightText = await generateInsightGapAnalysis(sessionExtractions, profileSummary, vectorMatches);
 
     // 5. Update user_ai_state moving watermark boundary
     await supabase.from('user_ai_state').upsert([

@@ -57,41 +57,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, rephrasedText: pastMatch.rephrased_text, cached: true });
     }
 
-    // 1. Generate query embedding for RAG search
-    const queryEmbedding = await generateTextEmbedding(rawText);
+    // 1. Rephrase doubt into pure third-person narration
+    const rephrasedText = await rephraseDoubtToThirdPerson(rawText);
 
-    // 2. Perform vector RAG search via match_question_analysis RPC
-    // No p_user_id needed anymore — the function uses auth.uid() internally
-    let similarPastTexts: string[] = [];
-    try {
-      const { data: matches, error: matchErr } = await supabase.rpc('match_question_analysis', {
-        query_embedding: queryEmbedding,
-        match_threshold: 0.5,
-        match_count: 3,
-      });
-
-      if (!matchErr && Array.isArray(matches)) {
-        similarPastTexts = matches
-          .map((m: any) => m.analysis_json?.concern?.stated_concern || m.analysis_json?.input?.raw_text)
-          .filter(Boolean);
-      }
-    } catch (e) {
-      console.warn('Vector match RPC warning:', e);
-    }
-
-    // 3. Fetch profile context summary
-    const { data: snapshotRow } = await supabase
-      .from('user_summary_snapshots')
-      .select('summary_text')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    const profileSummary = snapshotRow?.summary_text || '';
-
-    // 4. Rephrase doubt into third-person using exact specification prompt
-    const rephrasedText = await rephraseDoubtToThirdPerson(rawText, profileSummary, similarPastTexts);
-
-    // 5. Update questions table in Supabase if questionId provided
+    // 2. Update questions table in Supabase if questionId provided
     if (questionId) {
       await supabase
         .from('questions')
