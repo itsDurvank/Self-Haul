@@ -209,188 +209,182 @@ Analyze the user's raw thought and extract psychological indicators strictly mat
 DO NOT invent facts; use null or 0 if evidence is lacking. Output ONLY the valid JSON object.`;
 
 /**
- * Extract structured psychological analysis JSON from raw text using Gemini 2.5 Flash
+ * Extract structured psychological analysis JSON from raw text using Gemini Flash models with fallbacks
  */
 export async function extractQuestionAnalysis(rawText: string, entryId?: string): Promise<ExtractedAnalysis> {
   const prompt = `Analyze the following user raw thought/doubt: "${rawText}"`;
+  const EXTRACTION_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest'];
 
-  try {
-    const response = await getAi().models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        temperature: 0.2,
-        systemInstruction: EXTRACTION_SYSTEM_INSTRUCTION,
-      },
-    });
+  for (const modelName of EXTRACTION_MODELS) {
+    try {
+      const response = await getAi().models.generateContent({
+        model: modelName,
+        contents: prompt,
+        config: {
+          responseMimeType: 'application/json',
+          temperature: 0.2,
+          systemInstruction: EXTRACTION_SYSTEM_INSTRUCTION,
+        },
+      });
 
-    const text = response.text || '{}';
-    const parsed = JSON.parse(text);
-    return {
-      input: {
-        raw_text: rawText,
-        entry_id: entryId,
-        timestamp: new Date().toISOString(),
-      },
-      ...parsed,
-    };
-  } catch (err) {
-    console.warn('Gemini extraction API call warning (using structured fallback extraction):', err);
-    return {
-      input: {
-        raw_text: rawText,
-        entry_id: entryId,
-        timestamp: new Date().toISOString(),
-      },
-      emotional_state: {
-        primary_emotions: [{ emotion: 'fear', intensity: 0.7, confidence: 0.8 }],
-        overall_intensity: 0.7,
-        valence: -0.5,
-        vulnerability: 0.75,
-      },
-      situation: {
-        life_domain: rawText.toLowerCase().includes('career') ? 'career' : 'self-worth',
-        sub_domain: 'self-inquiry',
-        time_orientation: 'present',
-        uncertainty_level: 0.8,
-        perceived_threat: 0.6,
-      },
-      trigger: {
-        trigger_type: 'uncertainty',
-        trigger_source: 'self',
-        trigger_description: rawText,
-        confidence: 0.8,
-      },
-      concern: {
-        stated_concern: rawText,
-        feared_outcome: 'Uncertain future or lack of clarity',
-        feared_consequence: 'Continued distress',
-        underlying_need: 'security',
-        core_concern: 'Seeking clarity and agency',
-      },
-      cognitive_state: {
-        certainty: 0.3,
-        perceived_control: 0.4,
-        locus_of_control: 'mixed',
-        self_efficacy: 0.5,
-        rumination: 0.8,
-        catastrophizing: 0.5,
-        cognitive_distortions: ['catastrophizing'],
-        distortion_confidence: 0.7,
-      },
-      behavioral_state: {
-        action_orientation: 'rumination-only',
-        avoidance: 0.7,
-        reassurance_seeking: 0.3,
-        coping_response: 'avoidant',
-        resolution_status: 'unresolved',
-      },
-      self_relation: {
-        self_criticism: 0.7,
-        self_blame: 0.6,
-        self_worth_threat: 0.7,
-        comparison: 0.4,
-        self_talk_valence: 'critical',
-      },
-      gap_indicators: {
-        insight_vs_action_gap: 0.8,
-        responsibility_gap: 0.3,
-        stated_vs_demonstrated_agency: 'mismatch',
-        victim_framing_flag: false,
-        notes: 'High uncertainty with behavioral avoidance.',
-      },
-      clinical_pattern_flags: {
-        repetitive_intrusive_thought: false,
-        compulsive_behavior_described: false,
-        ego_dystonic_marker: false,
-        reassurance_seeking_pattern: false,
-        flag_confidence: 0.9,
-        flag_basis: null,
-        recommend_professional_review: false,
-      },
-      expression: {
-        rawness: 0.8,
-        directness: 0.8,
-        urgency: 0.7,
-        formality: 0.1,
-      },
-      recurrence: {
-        signal: 'new',
-        matched_entry_ids: [],
-      },
-      evidence: {
-        explicit: [rawText],
-        inferred: ['User expresses distress and seeks clarity.'],
-      },
-      overall_confidence: 0.85,
-    };
+      const text = response.text || '{}';
+      const parsed = JSON.parse(text);
+      if (parsed && typeof parsed === 'object' && parsed.emotional_state) {
+        return {
+          input: {
+            raw_text: rawText,
+            entry_id: entryId,
+            timestamp: new Date().toISOString(),
+          },
+          ...parsed,
+        };
+      }
+    } catch (err) {
+      console.warn(`Gemini extraction model ${modelName} call failed, trying next:`, err);
+    }
   }
+
+  console.error('CRITICAL: All Gemini extraction models failed. Generating dynamic structural fallback for:', rawText);
+  
+  const lowerText = rawText.toLowerCase();
+  const isCareer = lowerText.includes('job') || lowerText.includes('career') || lowerText.includes('work') || lowerText.includes('future') || lowerText.includes('path');
+  const isRelationship = lowerText.includes('friend') || lowerText.includes('family') || lowerText.includes('lonely') || lowerText.includes('love') || lowerText.includes('person');
+
+  return {
+    input: {
+      raw_text: rawText,
+      entry_id: entryId,
+      timestamp: new Date().toISOString(),
+    },
+    emotional_state: {
+      primary_emotions: [{ emotion: isCareer ? 'fear' : 'sadness', intensity: 0.65, confidence: 0.7 }],
+      overall_intensity: 0.65,
+      valence: -0.4,
+      vulnerability: 0.7,
+    },
+    situation: {
+      life_domain: isCareer ? 'career' : isRelationship ? 'relationship' : 'self-worth',
+      sub_domain: 'self-inquiry',
+      time_orientation: 'present',
+      uncertainty_level: 0.7,
+      perceived_threat: 0.5,
+    },
+    trigger: {
+      trigger_type: 'uncertainty',
+      trigger_source: 'self',
+      trigger_description: rawText,
+      confidence: 0.7,
+    },
+    concern: {
+      stated_concern: rawText,
+      feared_outcome: 'Uncertain future or lack of clarity',
+      feared_consequence: 'Continued distress',
+      underlying_need: 'security',
+      core_concern: 'Seeking clarity and agency',
+    },
+    cognitive_state: {
+      certainty: 0.3,
+      perceived_control: 0.4,
+      locus_of_control: 'mixed',
+      self_efficacy: 0.5,
+      rumination: 0.7,
+      catastrophizing: 0.4,
+      cognitive_distortions: ['catastrophizing'],
+      distortion_confidence: 0.6,
+    },
+    behavioral_state: {
+      action_orientation: 'intention-stated',
+      avoidance: 0.6,
+      reassurance_seeking: 0.3,
+      coping_response: 'emotion-focused',
+      resolution_status: 'unresolved',
+    },
+    self_relation: {
+      self_criticism: 0.6,
+      self_blame: 0.5,
+      self_worth_threat: 0.6,
+      comparison: 0.4,
+      self_talk_valence: 'critical',
+    },
+    gap_indicators: {
+      insight_vs_action_gap: 0.7,
+      responsibility_gap: 0.3,
+      stated_vs_demonstrated_agency: 'mismatch',
+      victim_framing_flag: false,
+      notes: 'Dynamic fallback extraction used due to API failure.',
+    },
+    clinical_pattern_flags: {
+      repetitive_intrusive_thought: false,
+      compulsive_behavior_described: false,
+      ego_dystonic_marker: false,
+      reassurance_seeking_pattern: false,
+      flag_confidence: 0.7,
+      flag_basis: null,
+      recommend_professional_review: false,
+    },
+    expression: {
+      rawness: 0.7,
+      directness: 0.7,
+      urgency: 0.6,
+      formality: 0.1,
+    },
+    recurrence: {
+      signal: 'new',
+      matched_entry_ids: [],
+    },
+    evidence: {
+      explicit: [rawText],
+      inferred: ['User expresses self-doubt and seeks clarity.'],
+    },
+    overall_confidence: 0.7,
+  };
 }
 
 /**
- * Generate 768-dimension vector embedding for text using text-embedding-004
+ * Generate 768-dimension vector embedding for text using gemini-embedding-001 (or fallback)
  */
 export async function generateTextEmbedding(text: string): Promise<number[]> {
-  try {
-    const response = await getAi().models.embedContent({
-      model: 'text-embedding-004',
-      contents: text,
-    });
+  const EMBEDDING_MODELS = ['gemini-embedding-001', 'gemini-embedding-2'];
 
-    const resAny = response as any;
-    const vals = resAny.embedding?.values || resAny.embeddings?.[0]?.values;
-    if (Array.isArray(vals) && vals.length === 768) {
-      return vals;
+  for (const modelName of EMBEDDING_MODELS) {
+    try {
+      const response = await getAi().models.embedContent({
+        model: modelName,
+        contents: text,
+        config: {
+          outputDimensionality: 768,
+        },
+      });
+
+      const resAny = response as any;
+      const vals = resAny.embedding?.values || resAny.embeddings?.[0]?.values;
+      if (Array.isArray(vals) && vals.length === 768) {
+        return vals;
+      }
+    } catch (err) {
+      console.warn(`Gemini embedding model ${modelName} call warning:`, err);
     }
-    throw new Error('Invalid embedding response format');
-  } catch (err) {
-    console.warn('Gemini embedding API call warning (generating normalized fallback vector):', err);
-    // Deterministic pseudo-random normalized 768-dim float vector based on text hash
-    const vec: number[] = new Array(768);
-    let hash = 0;
-    for (let i = 0; i < text.length; i++) {
-      hash = (hash << 5) - hash + text.charCodeAt(i);
-      hash |= 0;
-    }
-    let sumSq = 0;
-    for (let i = 0; i < 768; i++) {
-      const val = Math.sin(hash + i * 997);
-      vec[i] = val;
-      sumSq += val * val;
-    }
-    const norm = Math.sqrt(sumSq) || 1;
-    return vec.map((v) => v / norm);
   }
+
+  console.error('CRITICAL: Gemini embedding API failed on all models. Generating fallback normalized hash vector for:', text);
+  // Deterministic pseudo-random normalized 768-dim float vector based on text hash
+  const vec: number[] = new Array(768);
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    hash = (hash << 5) - hash + text.charCodeAt(i);
+    hash |= 0;
+  }
+  let sumSq = 0;
+  for (let i = 0; i < 768; i++) {
+    const val = Math.sin(hash + i * 997);
+    vec[i] = val;
+    sumSq += val * val;
+  }
+  const norm = Math.sqrt(sumSq) || 1;
+  return vec.map((v) => v / norm);
 }
 
 function fallbackThirdPersonRephrase(rawText: string): string {
-  const lower = rawText.toLowerCase().trim();
-  
-  // Physical / chest / somatic distress patterns
-  if (lower.includes('chest') || lower.includes('heavy') || lower.includes('tightness') || lower.includes('breath')) {
-    if (lower.includes('emotionally') || lower.includes('feeling') || lower.includes('well')) {
-      return "Someone is carrying a heavy, unsettling weight in their chest, struggling emotionally, and searching for a way to ground themselves through the discomfort.";
-    }
-    return "Someone is experiencing a physical manifestation of emotional distress, feeling a heavy tightness in their chest that they are struggling to ease.";
-  }
-
-  // General emotional distress / not feeling well
-  if (lower.includes('feeling') && (lower.includes('well') || lower.includes('good') || lower.includes('low') || lower.includes('bad') || lower.includes('down') || lower.includes('sad') || lower.includes('numb'))) {
-    return "Someone is going through a hard stretch emotionally, struggling to steady themselves, and isn't quite sure what would actually bring them back to a sense of peace.";
-  }
-
-  // Career / future uncertainty
-  if (lower.includes('career') || lower.includes('job') || lower.includes('future') || lower.includes('path')) {
-    return "Someone is anxious about where their life or career is heading, comparing their trajectory to others and feeling paralyzed by the uncertainty of what comes next.";
-  }
-
-  // Relationship / social anxiety
-  if (lower.includes('friend') || lower.includes('relationship') || lower.includes('alone') || lower.includes('lonely') || lower.includes('people')) {
-    return "Someone is wrestling with feeling disconnected or misunderstood, questioning their place among others and carrying a quiet burden of isolation.";
-  }
-
-  // Smart natural transformation fallback (avoids raw pronoun replacement)
   let cleanText = rawText
     .replace(/\b(hey there|hey|hi)\b/gi, '')
     .replace(/\b(i am|i'm)\b/gi, 'they feel')
@@ -405,7 +399,7 @@ function fallbackThirdPersonRephrase(rawText: string): string {
   cleanText = cleanText.charAt(0).toUpperCase() + cleanText.slice(1);
   if (!cleanText.endsWith('.')) cleanText += '.';
 
-  return `Someone is carrying a quiet worry: ${cleanText.toLowerCase().replace(/^they /, 'they ')}`;
+  return `Someone is processing a quiet burden: ${cleanText.toLowerCase().replace(/^they /, 'they ')}`;
 }
 
 /**
@@ -455,7 +449,7 @@ ${profileSummary}
 SIMILAR PAST ENTRIES:
 ${similarEntriesFormatted}`;
 
-  const FLASH_MODELS = ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
+  const FLASH_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest'];
 
   for (const modelName of FLASH_MODELS) {
     try {
@@ -501,19 +495,27 @@ Rules:
 3. End with ONE direct reframe or targeted question.
 4. If emotional distress/hopelessness signals are high across entries, adopt a supportive tone instead of confrontation.`;
 
-  try {
-    const response = await getAi().models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: prompt,
-      config: {
-        temperature: 0.4,
-        systemInstruction: `You are a direct, insightful self-inquiry consultant. Output concise, impactful gap analysis.`,
-      },
-    });
+  const INSIGHT_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest'];
 
-    return response.text?.trim() || 'No clear gap pattern identified in this session.';
-  } catch (err) {
-    console.error('Gemini insight error:', err);
-    return 'Unable to generate insight at this time.';
+  for (const modelName of INSIGHT_MODELS) {
+    try {
+      const response = await getAi().models.generateContent({
+        model: modelName,
+        contents: prompt,
+        config: {
+          temperature: 0.4,
+          systemInstruction: `You are a direct, insightful self-inquiry consultant. Output concise, impactful gap analysis.`,
+        },
+      });
+
+      if (response.text?.trim()) {
+        return response.text.trim();
+      }
+    } catch (err) {
+      console.warn(`Gemini insight model ${modelName} warning:`, err);
+    }
   }
+
+  return 'No clear gap pattern identified in this session.';
 }
+

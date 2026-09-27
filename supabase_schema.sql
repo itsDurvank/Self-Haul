@@ -172,7 +172,7 @@ CREATE OR REPLACE FUNCTION match_question_analysis (
   query_embedding vector(768),
   match_threshold float,
   match_count int,
-  p_user_id uuid
+  p_user_id uuid DEFAULT NULL
 )
 RETURNS TABLE (
   id uuid,
@@ -183,7 +183,19 @@ RETURNS TABLE (
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
+DECLARE
+  v_user_id uuid;
 BEGIN
+  v_user_id := COALESCE(auth.uid(), p_user_id);
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Unauthorized: User authentication required';
+  END IF;
+
+  -- Security Check: Prevent querying another user's private analyses
+  IF auth.uid() IS NOT NULL AND p_user_id IS NOT NULL AND p_user_id != auth.uid() THEN
+    RAISE EXCEPTION 'Unauthorized: Cannot query data for another user';
+  END IF;
+
   RETURN QUERY
   SELECT
     qa.id,
@@ -191,7 +203,7 @@ BEGIN
     qa.analysis_json,
     1 - (qa.embedding <=> query_embedding) AS similarity
   FROM public.question_analysis qa
-  WHERE qa.user_id = p_user_id
+  WHERE qa.user_id = v_user_id
     AND 1 - (qa.embedding <=> query_embedding) > match_threshold
   ORDER BY qa.embedding <=> query_embedding
   LIMIT match_count;
