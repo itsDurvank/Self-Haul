@@ -130,7 +130,6 @@ export const Reflection: React.FC<ReflectionProps> = ({ questions, onBurnAll, on
       {/* Q&A List Cards wrapped in Apple Vision LiquidGlass Sheets */}
       <div className="w-full max-w-2xl my-4 sm:my-5 space-y-4 z-10 max-h-[66dvh] sm:max-h-[70dvh] overflow-y-auto px-2 custom-scrollbar">
         {questions.map((q, idx) => {
-          const isAnswerLong = q.answer && q.answer.length > 110;
           const isExpanded = !!expandedMap[q.id];
 
           return (
@@ -149,44 +148,80 @@ export const Reflection: React.FC<ReflectionProps> = ({ questions, onBurnAll, on
                 padding="20px 24px"
                 saturation={120}
                 glowOnHoverOnly={true}
-                onClick={() => isAnswerLong && toggleExpand(q.id)}
+                onClick={() => toggleExpand(q.id)}
                 style={{
                   background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%)',
                   boxShadow: 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.4), 0 10px 30px rgba(0, 0, 0, 0.3)',
                 }}
-                className={`w-full border border-white/25 hover:border-white/45 transition-all duration-300 ${isAnswerLong ? 'cursor-pointer' : ''}`}
+                className="w-full border border-white/25 hover:border-white/45 transition-all duration-300 cursor-pointer"
               >
                 <div className="w-full flex flex-col space-y-3 text-left">
-                  {/* Card Header: Question Number & Time */}
-                  <div className="flex items-center justify-between gap-4 pb-0.5">
+                  {/* Card Header: Question Number & Expand Toggle */}
+                  <div className="flex items-center justify-between gap-4 pb-0.5 border-b border-white/10 pb-2">
                     <span className="text-xs font-mono font-semibold text-cyan-300 uppercase tracking-[0.2em]">
-                      QUESTION {idx + 1}
+                      ENTRY {idx + 1}
                     </span>
-                    <span className="text-[11px] font-mono text-zinc-300/80 font-medium">
-                      {new Date(q.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-mono text-zinc-400">
+                        {isExpanded ? 'Collapse' : 'Tap to expand'}
+                      </span>
+                      {isExpanded ? (
+                        <ChevronUp className="w-4 h-4 text-cyan-300" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4 text-zinc-400" />
+                      )}
+                    </div>
                   </div>
 
-                  {/* Question Paragraph Text */}
-                  <div className="text-base sm:text-lg font-sans text-zinc-100 font-normal leading-relaxed text-left whitespace-pre-wrap drop-shadow-sm">
-                    {q.text}
+                  {/* 1. Original Question */}
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest font-semibold block">
+                      ORIGINAL DOUBT
+                    </span>
+                    <div className={`text-sm sm:text-base font-sans text-zinc-200 font-normal leading-relaxed ${!isExpanded ? 'line-clamp-1' : ''}`}>
+                      "{q.text}"
+                    </div>
                   </div>
 
-                  {/* Response Section */}
-                  <div className="pt-3 border-t border-white/15 space-y-1">
-                    <span className="text-[11px] font-mono text-cyan-400/90 uppercase tracking-widest font-semibold block mb-1">
-                      RESPONSE
-                    </span>
-                    {q.skipped ? (
-                      <p className="text-sm font-sans italic text-zinc-400 text-left">[Skipped]</p>
-                    ) : q.answer ? (
-                      <p className={`text-sm sm:text-base font-sans text-zinc-200 leading-relaxed text-left ${!isExpanded && isAnswerLong ? 'line-clamp-2' : 'whitespace-pre-wrap'}`}>
-                        {q.answer}
-                      </p>
-                    ) : (
-                      <p className="text-sm font-sans italic text-zinc-400 text-left">[No response]</p>
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.25 }}
+                        className="space-y-3 pt-2 border-t border-white/10 overflow-hidden"
+                      >
+                        {/* 2. Rephrased Narration */}
+                        {q.rephrasedText && (
+                          <div className="space-y-1 bg-white/[0.03] p-3 rounded-xl border border-white/10">
+                            <span className="text-[10px] font-mono text-cyan-300 uppercase tracking-widest font-semibold block">
+                              THIRD-PERSON NARRATION
+                            </span>
+                            <p className="text-sm font-serif italic text-zinc-200 leading-relaxed">
+                              {q.rephrasedText}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* 3. Your Response / Answer */}
+                        <div className="space-y-1 bg-white/[0.02] p-3 rounded-xl border border-white/5">
+                          <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest font-semibold block">
+                            YOUR RESPONSE
+                          </span>
+                          {q.skipped ? (
+                            <p className="text-sm font-sans italic text-zinc-400">[Skipped]</p>
+                          ) : q.answer ? (
+                            <p className="text-sm sm:text-base font-sans text-zinc-100 leading-relaxed whitespace-pre-wrap">
+                              {q.answer}
+                            </p>
+                          ) : (
+                            <p className="text-sm font-sans italic text-zinc-400">[No response provided]</p>
+                          )}
+                        </div>
+                      </motion.div>
                     )}
-                  </div>
+                  </AnimatePresence>
                 </div>
               </LiquidGlass>
             </motion.div>
