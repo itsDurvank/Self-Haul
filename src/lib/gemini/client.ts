@@ -384,7 +384,21 @@ export async function generateTextEmbedding(text: string): Promise<number[]> {
   return vec.map((v) => v / norm);
 }
 
+function isGibberishOrShortNoise(text: string): boolean {
+  const trimmed = text.trim();
+  if (trimmed.length < 3) return true;
+  const lettersOnly = trimmed.replace(/[^a-zA-Z]/g, '');
+  if (lettersOnly.length < 3) return true;
+  const vowels = trimmed.match(/[aeiouyAEIOUY]/g);
+  if (!vowels && trimmed.length < 8) return true;
+  return false;
+}
+
 function fallbackThirdPersonRephrase(rawText: string): string {
+  if (isGibberishOrShortNoise(rawText)) {
+    return `[Unclear entry: "${rawText}"]`;
+  }
+
   let cleanText = rawText
     .replace(/\b(hey there|hey|hi)\b/gi, '')
     .replace(/\b(i am|i'm)\b/gi, 'they feel')
@@ -410,6 +424,10 @@ export async function rephraseDoubtToThirdPerson(
   profileSummary: string = '',
   similarPastEntries: string[] = []
 ): Promise<string> {
+  if (isGibberishOrShortNoise(rawText)) {
+    return `[Unclear entry: "${rawText}"]`;
+  }
+
   const systemInstruction = `You are the Rephrasing Engine for a private self-inquiry app called Self-Haul.
 
 TASK
@@ -426,6 +444,7 @@ RULES
 8. Match the register of the input — raw and blunt stays raw and blunt; it should not become clinical or overly poetic unless the original was.
 9. If PROFILE CONTEXT or SIMILAR PAST ENTRIES are provided, use them only to calibrate tone and phrasing style. Never reference past entries directly inside the output, and never imply continuity ("again," "still," "as before").
 10. Output ONLY the rephrased narration. No preamble, no explanation, no quotation marks, no labels, no prefix like "Someone is carrying this doubt:" — return the narration text alone.
+11. CRITICAL GIBBERISH RULE: If the original input is random letters, keyboard smash, gibberish, symbols, or non-dictionary noise (e.g. 'df', 'asdf', '123', '???', 'hjkl'), DO NOT fabricate a story or emotional state. Output strictly: [Unclear entry: "<original_text>"]
 
 EXAMPLES
 
@@ -434,7 +453,10 @@ Failed rephrase (too thin, just restates): "Someone is not feeling very well emo
 Correct rephrase: "Someone is going through a hard stretch emotionally, struggling to steady themselves, and isn't quite sure what would actually bring them back to a sense of peace."
 
 Original: "I am very afraid of my career I don't know where to go will I ever get a job or not I have a plan but I am very afraid to follow it due to uncertainty of it because I compare path of others and I wonder if mine is right"
-Correct rephrase: "Someone is afraid of where their career is heading. They have a plan, but they can't bring themselves to follow it, because they keep measuring it against everyone else's path and wondering if theirs was ever the right one."`;
+Correct rephrase: "Someone is afraid of where their career is heading. They have a plan, but they can't bring themselves to follow it, because they keep measuring it against everyone else's path and wondering if theirs was ever the right one."
+
+Original: "df"
+Correct rephrase: [Unclear entry: "df"]`;
 
   const similarEntriesFormatted = similarPastEntries.length > 0
     ? similarPastEntries.map((e) => `- ${e}`).join('\n')

@@ -87,10 +87,6 @@ export const DumpScreen: React.FC<DumpScreenProps> = ({
     const trimmed = inputText.trim();
 
     if (!trimmed) {
-      if (questionCount > 0) {
-        soundEngine.playButtonClickSound();
-        onProceedToReady();
-      }
       return;
     }
 

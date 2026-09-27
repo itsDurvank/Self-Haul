@@ -428,15 +428,13 @@ export const Reflection: React.FC<ReflectionProps> = ({ questions, onBurnAll, on
               >
                 <div className="flex flex-col space-y-4 text-left">
                   <div className="flex items-center justify-between border-b border-white/15 pb-3">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-cyan-400 animate-pulse" />
-                      <h3 className="text-sm font-mono font-bold tracking-[0.2em] text-cyan-200 uppercase">
-                        AI CONSULTANT GAP ANALYSIS
-                      </h3>
+                    <div className="flex items-center gap-2 text-xs tracking-[0.3em] uppercase text-zinc-300 font-mono bg-black/60 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/10 shadow-lg">
+                      <Sparkles className="w-3.5 h-3.5 text-zinc-200" />
+                      <span>AI INSIGHT</span>
                     </div>
                     <button
                       onClick={() => setInsightModalOpen(false)}
-                      className="text-xs font-mono text-zinc-400 hover:text-white transition-colors cursor-pointer px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10"
+                      className="text-xs font-mono text-zinc-400 hover:text-white transition-colors cursor-pointer px-2.5 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10"
                     >
                       Close ✕
                     </button>
