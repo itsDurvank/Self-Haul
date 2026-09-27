@@ -396,7 +396,7 @@ function isGibberishOrShortNoise(text: string): boolean {
 
 function fallbackThirdPersonRephrase(rawText: string): string {
   if (isGibberishOrShortNoise(rawText)) {
-    return `[Unclear entry: "${rawText}"]`;
+    return `"This one didnt make sense🥲:${rawText}"`;
   }
 
   let cleanText = rawText
@@ -425,7 +425,7 @@ export async function rephraseDoubtToThirdPerson(
   similarPastEntries: string[] = []
 ): Promise<string> {
   if (isGibberishOrShortNoise(rawText)) {
-    return `[Unclear entry: "${rawText}"]`;
+    return `"This one didnt make sense🥲:${rawText}"`;
   }
 
   const systemInstruction = `You are the Rephrasing Engine for a private self-inquiry app called Self-Haul.
