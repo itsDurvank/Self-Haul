@@ -482,9 +482,9 @@ export async function generateInsightGapAnalysis(
   profileSummary?: string,
   vectorMatches?: ExtractedAnalysis[]
 ): Promise<string> {
-  const prompt = `Generate an 'AI Insight' consultant-style gap analysis (under 150 words) based on the user's current session and relevant past history.
+  const prompt = `Perform an 'AI Insight' gap analysis (100-140 words max) analyzing the user's current session against their past history.
 
-Long-Term Profile Memory So Far:
+Long-Term Memory Snapshot:
 "${profileSummary || 'Cold start - no previous summary profile.'}"
 
 Current Session Extractions (JSON):
@@ -493,11 +493,16 @@ ${JSON.stringify(sessionExtractions, null, 2)}
 Relevant Past Vector Matches (RAG Context):
 ${JSON.stringify(vectorMatches || [], null, 2)}
 
-Rules:
-1. Identify the SINGLE highest-leverage gap (e.g. insight without action, external blame despite available agency, repeated unresolved concern across sessions).
-2. State the gap plainly without therapeutic softening or clinical/diagnostic jargon.
-3. End with ONE direct reframe or targeted question.
-4. If emotional distress/hopelessness signals are high across entries, adopt a supportive tone instead of confrontation.`;
+EVALUATION CRITERIA:
+1. Examine whether the user blames external circumstances or other people while ignoring their own agency and available choices.
+2. Examine if the user exhibits high intellectual insight/rumination but takes zero concrete action steps.
+3. Compare current answers against past vector matches to detect recurring unaddressed fears or repeated evasive patterns.
+
+OUTPUT FORMAT RULES:
+- Identify the SINGLE highest-leverage gap plainly and directly.
+- Avoid therapeutic fluff, softening preambles, or clinical/diagnostic terms (no diagnostic labels).
+- End with ONE sharp, actionable reframe or targeted self-inquiry question.
+- If overall emotional distress signals are severe, maintain a supportive, stabilizing tone while remaining honest.`;
 
   const INSIGHT_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest'];
 
@@ -507,8 +512,8 @@ Rules:
         model: modelName,
         contents: prompt,
         config: {
-          temperature: 0.4,
-          systemInstruction: `You are a direct, insightful self-inquiry consultant. Output concise, impactful gap analysis.`,
+          temperature: 0.3,
+          systemInstruction: `You are a direct, razor-sharp self-inquiry consultant. Synthesize user extractions, past RAG vector matches, and memory snapshots into an exact, on-point gap analysis.`,
         },
       });
 
