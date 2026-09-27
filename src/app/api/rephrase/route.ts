@@ -4,7 +4,7 @@ import { generateTextEmbedding, rephraseDoubtToThirdPerson } from '@/lib/gemini/
 
 export async function POST(req: NextRequest) {
   try {
-    const { questionId, rawText, userId: inputUserId } = await req.json();
+    const { questionId, rawText, userId: bodyUserId } = await req.json();
 
     if (!rawText) {
       return NextResponse.json({ error: 'Missing required parameter: rawText' }, { status: 400 });
@@ -12,7 +12,16 @@ export async function POST(req: NextRequest) {
 
     const supabase = await createServerSupabaseClient();
     const { data: { user: authUser } } = await supabase.auth.getUser();
-    const userId = authUser?.id || inputUserId || 'guest';
+
+    if (!authUser) {
+      return NextResponse.json({ error: 'Unauthorized: sign in required' }, { status: 401 });
+    }
+
+    if (bodyUserId && bodyUserId !== authUser.id) {
+      return NextResponse.json({ error: 'Forbidden: cannot rephrase for another user' }, { status: 403 });
+    }
+
+    const userId = authUser.id;
 
     // 0a. Check if this questionId already has a rephrased_text saved in Supabase
     if (questionId) {
@@ -52,13 +61,13 @@ export async function POST(req: NextRequest) {
     const queryEmbedding = await generateTextEmbedding(rawText);
 
     // 2. Perform vector RAG search via match_question_analysis RPC
+    // No p_user_id needed anymore — the function uses auth.uid() internally
     let similarPastTexts: string[] = [];
     try {
       const { data: matches, error: matchErr } = await supabase.rpc('match_question_analysis', {
         query_embedding: queryEmbedding,
         match_threshold: 0.5,
         match_count: 3,
-        p_user_id: userId,
       });
 
       if (!matchErr && Array.isArray(matches)) {
@@ -75,14 +84,14 @@ export async function POST(req: NextRequest) {
       .from('user_summary_snapshots')
       .select('summary_text')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     const profileSummary = snapshotRow?.summary_text || '';
 
     // 4. Rephrase doubt into third-person using exact specification prompt
     const rephrasedText = await rephraseDoubtToThirdPerson(rawText, profileSummary, similarPastTexts);
 
-    // 4. Update questions table in Supabase if questionId provided
+    // 5. Update questions table in Supabase if questionId provided
     if (questionId) {
       await supabase
         .from('questions')

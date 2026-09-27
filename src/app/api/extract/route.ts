@@ -4,25 +4,30 @@ import { extractQuestionAnalysis, generateTextEmbedding } from '@/lib/gemini/cli
 
 export async function POST(req: NextRequest) {
   try {
-    const { questionId, rawText, userId } = await req.json();
+    const { questionId, rawText, userId: bodyUserId } = await req.json();
 
-    if (!rawText || !userId) {
-      return NextResponse.json({ error: 'Missing required parameters: rawText and userId' }, { status: 400 });
+    if (!rawText) {
+      return NextResponse.json({ error: 'Missing required parameter: rawText' }, { status: 400 });
     }
+
+    const supabase = await createServerSupabaseClient();
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+
+    if (!authUser) {
+      return NextResponse.json({ error: 'Unauthorized: sign in required' }, { status: 401 });
+    }
+
+    if (bodyUserId && bodyUserId !== authUser.id) {
+      return NextResponse.json({ error: 'Forbidden: cannot extract for another user' }, { status: 403 });
+    }
+
+    const effectiveUserId = authUser.id;
 
     // 1. Run Gemini Structured JSON extraction
     const analysisJson = await extractQuestionAnalysis(rawText, questionId);
 
     // 2. Generate 768-dim vector embedding
     const embedding = await generateTextEmbedding(rawText);
-
-    const supabase = await createServerSupabaseClient();
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    const effectiveUserId = authUser?.id || userId;
-
-    if (!rawText || !effectiveUserId) {
-      return NextResponse.json({ error: 'Missing required parameters: rawText and userId' }, { status: 400 });
-    }
 
     // Verify if questionId exists in questions table to prevent FK constraint error
     let targetQuestionId: string | null = null;
