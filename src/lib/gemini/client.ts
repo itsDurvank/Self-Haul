@@ -384,7 +384,7 @@ export async function generateTextEmbedding(text: string): Promise<number[]> {
   return vec.map((v) => v / norm);
 }
 
-function isGibberishOrShortNoise(text: string): boolean {
+export function isGibberishOrShortNoise(text: string): boolean {
   const trimmed = text.trim();
   if (trimmed.length < 3) return true;
   const lettersOnly = trimmed.replace(/[^a-zA-Z]/g, '');

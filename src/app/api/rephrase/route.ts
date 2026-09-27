@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { generateTextEmbedding, rephraseDoubtToThirdPerson } from '@/lib/gemini/client';
+import { generateTextEmbedding, rephraseDoubtToThirdPerson, isGibberishOrShortNoise } from '@/lib/gemini/client';
 
 export async function POST(req: NextRequest) {
   try {
@@ -8,6 +8,19 @@ export async function POST(req: NextRequest) {
 
     if (!rawText) {
       return NextResponse.json({ error: 'Missing required parameter: rawText' }, { status: 400 });
+    }
+
+    // 0. If input is gibberish/short noise, return custom message immediately without reading cache
+    if (isGibberishOrShortNoise(rawText)) {
+      const gibberishResponse = `"This one didnt make sense🥲:${rawText}"`;
+      const supabase = await createServerSupabaseClient();
+      if (questionId) {
+        await supabase
+          .from('questions')
+          .update({ rephrased_text: gibberishResponse })
+          .eq('id', questionId);
+      }
+      return NextResponse.json({ success: true, rephrasedText: gibberishResponse });
     }
 
     const supabase = await createServerSupabaseClient();
