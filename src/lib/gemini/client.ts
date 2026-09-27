@@ -482,7 +482,7 @@ export async function generateInsightGapAnalysis(
   profileSummary?: string,
   vectorMatches?: ExtractedAnalysis[]
 ): Promise<string> {
-  const prompt = `Perform an 'AI Insight' gap analysis (100-140 words max) analyzing the user's current session against their past history.
+  const prompt = `Act as an elite clinical psychologist and master self-inquiry consultant. Perform a deep, high-leverage psychological gap analysis (100–140 words max) analyzing the user's current session against their past history.
 
 Long-Term Memory Snapshot:
 "${profileSummary || 'Cold start - no previous summary profile.'}"
@@ -493,16 +493,19 @@ ${JSON.stringify(sessionExtractions, null, 2)}
 Relevant Past Vector Matches (RAG Context):
 ${JSON.stringify(vectorMatches || [], null, 2)}
 
-EVALUATION CRITERIA:
-1. Examine whether the user blames external circumstances or other people while ignoring their own agency and available choices.
-2. Examine if the user exhibits high intellectual insight/rumination but takes zero concrete action steps.
-3. Compare current answers against past vector matches to detect recurring unaddressed fears or repeated evasive patterns.
+DIAGNOSTIC SCOPE (Evaluate across all psychological & behavioral dimensions):
+- Agency & Locus of Control: External blame, victim framing, or relinquishing choices vs taking personal ownership.
+- Insight vs. Action Disconnect: High intellectual understanding or rumination with zero concrete behavioral action steps.
+- Defense Mechanisms & Blind Spots: Intellectualization, rationalization, projection, displacement, or subtle emotional avoidance.
+- Cognitive Distortions: Catastrophizing, all-or-nothing framing, mind-reading, or mistaking feelings for objective reality.
+- Hidden Contradictions: Direct mismatches between what the user claims to want vs the choices/behaviors they describe.
+- Recurring Behavioral Loops: Unaddressed patterns or evasive cycles appearing across past RAG vector matches and current answers.
 
-OUTPUT FORMAT RULES:
-- Identify the SINGLE highest-leverage gap plainly and directly.
-- Avoid therapeutic fluff, softening preambles, or clinical/diagnostic terms (no diagnostic labels).
-- End with ONE sharp, actionable reframe or targeted self-inquiry question.
-- If overall emotional distress signals are severe, maintain a supportive, stabilizing tone while remaining honest.`;
+OUTPUT RULES:
+- Identify the SINGLE most critical blind spot, cognitive flaw, or agency gap in their thinking.
+- Speak directly, perceptively, and with clinical depth. No therapeutic fluff, preambles, or diagnostic labels (e.g. do not label as "OCD" or "depression").
+- Conclude with ONE transformative, high-leverage reframe or targeted self-inquiry question that compels self-reflection and action.
+- If overall emotional distress signals are severe, adopt a supportive, stabilizing tone while maintaining psychological honesty.`;
 
   const INSIGHT_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest'];
 
@@ -513,7 +516,7 @@ OUTPUT FORMAT RULES:
         contents: prompt,
         config: {
           temperature: 0.3,
-          systemInstruction: `You are a direct, razor-sharp self-inquiry consultant. Synthesize user extractions, past RAG vector matches, and memory snapshots into an exact, on-point gap analysis.`,
+          systemInstruction: `You are an elite clinical psychologist and master self-inquiry consultant. You diagnose psychological blind spots, cognitive distortions, agency gaps, and behavioral contradictions with surgical clarity.`,
         },
       });
 
