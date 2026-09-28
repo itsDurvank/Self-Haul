@@ -254,17 +254,36 @@ export function useSelfHaul() {
     }));
   }, []);
 
+function prioritizeReadyQueue(queue: string[], questions: Question[], startIndex: number): string[] {
+  const answered = queue.slice(0, startIndex);
+  const remaining = queue.slice(startIndex);
+
+  const ready = remaining.filter((id) => {
+    const q = questions.find((item) => item.id === id);
+    return Boolean(q?.rephrasedText);
+  });
+
+  const pending = remaining.filter((id) => {
+    const q = questions.find((item) => item.id === id);
+    return !q?.rephrasedText;
+  });
+
+  return [...answered, ...ready, ...pending];
+}
+
   const startPortal = useCallback(() => {
     if (state.questions.length === 0) return;
 
-    // Fisher-Yates shuffle the question IDs
-    const shuffledIds = shuffle(state.questions.map((q) => q.id));
+    // Separate already rephrased questions and pending ones, randomly shuffling each group
+    const readyIds = shuffle(state.questions.filter((q) => Boolean(q.rephrasedText)).map((q) => q.id));
+    const pendingIds = shuffle(state.questions.filter((q) => !q.rephrasedText).map((q) => q.id));
+    const initialQueue = [...readyIds, ...pendingIds];
 
     // INSTANTLY transition stage to 'portal' so portal video plays immediately with ZERO latency
     setState((prev) => ({
       ...prev,
       stage: 'portal',
-      queue: shuffledIds,
+      queue: initialQueue,
       currentIndex: 0,
     }));
 
@@ -286,12 +305,22 @@ export function useSelfHaul() {
           .then((res) => res.json())
           .then((data) => {
             if (data.rephrasedText) {
-              setState((prev) => ({
-                ...prev,
-                questions: prev.questions.map((item) =>
+              setState((prev) => {
+                const updatedQuestions = prev.questions.map((item) =>
                   item.id === q.id ? { ...item, rephrasedText: data.rephrasedText } : item
-                ),
-              }));
+                );
+                // Dynamically promote the newly finished question ahead of any remaining unrephrased ones
+                const reorderedQueue = prioritizeReadyQueue(
+                  prev.queue,
+                  updatedQuestions,
+                  prev.currentIndex + 1
+                );
+                return {
+                  ...prev,
+                  questions: updatedQuestions,
+                  queue: reorderedQueue,
+                };
+              });
             }
           })
           .catch((err) => console.warn('Rephrasing fetch warning:', err));
@@ -341,10 +370,12 @@ export function useSelfHaul() {
 
       const nextIndex = prev.currentIndex + 1;
       const isFinished = nextIndex >= prev.queue.length;
+      const reorderedQueue = isFinished ? prev.queue : prioritizeReadyQueue(prev.queue, updatedQuestions, nextIndex);
 
       return {
         ...prev,
         questions: updatedQuestions,
+        queue: reorderedQueue,
         currentIndex: nextIndex,
         stage: isFinished ? 'reflection' : 'answer',
       };
@@ -368,10 +399,12 @@ export function useSelfHaul() {
 
       const nextIndex = prev.currentIndex + 1;
       const isFinished = nextIndex >= prev.queue.length;
+      const reorderedQueue = isFinished ? prev.queue : prioritizeReadyQueue(prev.queue, updatedQuestions, nextIndex);
 
       return {
         ...prev,
         questions: updatedQuestions,
+        queue: reorderedQueue,
         currentIndex: nextIndex,
         stage: isFinished ? 'reflection' : 'answer',
       };

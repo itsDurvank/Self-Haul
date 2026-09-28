@@ -125,16 +125,28 @@ export const AnswerScreen: React.FC<AnswerScreenProps> = ({
 
         <AnimatePresence mode="wait">
           <motion.div
-            key={currentQuestion.id}
-            initial={{ opacity: 0, y: 20, filter: 'blur(10px)' }}
+            key={currentQuestion.id + (currentQuestion.rephrasedText ? '-rephrased' : '-raw')}
+            initial={{ opacity: 0, y: 15, filter: 'blur(10px)' }}
             animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-            exit={{ opacity: 0, y: -20, filter: 'blur(10px)' }}
-            transition={{ duration: 0.8 }}
+            exit={{ opacity: 0, y: -15, filter: 'blur(10px)' }}
+            transition={{ duration: 0.6 }}
             className="w-full text-center space-y-4"
           >
-            <h2 className="text-2xl sm:text-4xl font-serif font-light text-zinc-100 leading-snug px-4 drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">
-              &ldquo;{currentQuestion.rephrasedText || currentQuestion.text}&rdquo;
-            </h2>
+            {currentQuestion.rephrasedText ? (
+              <h2 className="text-2xl sm:text-4xl font-serif font-light text-zinc-100 leading-snug px-4 drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+                &ldquo;{currentQuestion.rephrasedText}&rdquo;
+              </h2>
+            ) : (
+              <div className="flex flex-col items-center justify-center space-y-3 py-2">
+                <h2 className="text-2xl sm:text-4xl font-serif font-light text-zinc-300/80 leading-snug px-4 italic drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+                  &ldquo;{currentQuestion.text}&rdquo;
+                </h2>
+                <div className="flex items-center gap-2 text-xs font-mono text-indigo-300/80 tracking-widest uppercase bg-indigo-950/40 px-3 py-1 rounded-full border border-indigo-500/20 backdrop-blur-md">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping" />
+                  <span>Deepening perspective...</span>
+                </div>
+              </div>
+            )}
           </motion.div>
         </AnimatePresence>
 

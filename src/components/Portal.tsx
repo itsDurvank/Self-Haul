@@ -21,7 +21,12 @@ export const Portal: React.FC<PortalProps> = ({ questions = [], onComplete }) =>
 
   useEffect(() => {
     if (videoRef.current) {
-      videoRef.current.play().catch(() => {});
+      videoRef.current.currentTime = 0;
+      videoRef.current.muted = true;
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {});
+      }
     }
   }, []);
 
@@ -35,7 +40,9 @@ export const Portal: React.FC<PortalProps> = ({ questions = [], onComplete }) =>
       <video
         ref={videoRef}
         autoPlay
+        muted
         playsInline
+        preload="auto"
         onEnded={onComplete}
         className="w-full h-full object-cover"
       >

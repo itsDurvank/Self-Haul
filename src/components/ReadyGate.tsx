@@ -88,6 +88,15 @@ export const ReadyGate: React.FC<ReadyGateProps> = ({
 
   return (
     <div className="relative min-h-[100dvh] w-full flex flex-col items-center justify-between p-6 sm:p-12 bg-[#030306] text-zinc-100 overflow-hidden select-none">
+      {/* Invisible Preload Video element for 0ms Portal Transition */}
+      <video
+        preload="auto"
+        muted
+        playsInline
+        style={{ display: 'none', position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+        src="/media/video/transition-video.mp4"
+      />
+
       {/* Hyperspeed Warp Tunnel Background Effect from React Bits */}
       <div className="absolute inset-0 z-0 opacity-85">
         <Hyperspeed effectOptions={HYPERSPEED_OPTIONS} />

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BlackHole } from './BlackHole';
 import { ArrowRight, ArrowLeft, CornerDownLeft, Sparkles, Wind, LogOut, User } from 'lucide-react';
@@ -38,9 +38,18 @@ export const DumpScreen: React.FC<DumpScreenProps> = ({
   const [isBreathingMode, setIsBreathingMode] = useState(false);
   const [isProfileCardOpen, setIsProfileCardOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const animTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (animTimeoutRef.current) {
+        clearTimeout(animTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const particles = useMemo(() => {
-    if (!sunkText) return [];
+    if (!sunkText || !sunkText.text) return [];
     const text = sunkText.text;
     const total = text.length;
     const maxCharsPerLine = typeof window !== 'undefined' && window.innerWidth < 768 ? 45 : 120;
@@ -71,7 +80,7 @@ export const DumpScreen: React.FC<DumpScreenProps> = ({
         randomRotate,
       };
     });
-  }, [sunkText?.id]);
+  }, [sunkText?.id, sunkText?.text]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
@@ -92,7 +101,11 @@ export const DumpScreen: React.FC<DumpScreenProps> = ({
 
     soundEngine.playEnterKeySound();
 
-    // Trigger text swallow animation
+    if (animTimeoutRef.current) {
+      clearTimeout(animTimeoutRef.current);
+    }
+
+    // Trigger text swallow animation with unique ID
     const animId = crypto.randomUUID();
     setSunkText({ id: animId, text: trimmed });
     setIsAbsorbing(true);
@@ -105,7 +118,7 @@ export const DumpScreen: React.FC<DumpScreenProps> = ({
       textareaRef.current.style.height = 'auto';
     }
 
-    setTimeout(() => {
+    animTimeoutRef.current = setTimeout(() => {
       setIsAbsorbing(false);
       setSunkText(null);
     }, 1200);
@@ -319,9 +332,15 @@ export const DumpScreen: React.FC<DumpScreenProps> = ({
         <BlackHole isAbsorbing={isAbsorbing} pulseTrigger={pulseTrigger} size={320} />
 
         {/* Character Particle Disintegration Animation into Void */}
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           {sunkText && particles.length > 0 && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
+            <motion.div
+              key={sunkText.id}
+              initial={{ opacity: 1 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 flex items-center justify-center pointer-events-none z-30"
+            >
               {particles.map((p) => (
                 <motion.span
                   key={p.key}
@@ -341,7 +360,6 @@ export const DumpScreen: React.FC<DumpScreenProps> = ({
                     rotate: [0, p.randomRotate, p.randomRotate * 1.8],
                     filter: ['blur(0px)', 'blur(1px)', 'blur(12px)'],
                   }}
-                  exit={{ opacity: 0 }}
                   transition={{
                     duration: 0.95,
                     delay: p.index * 0.014,
@@ -352,7 +370,7 @@ export const DumpScreen: React.FC<DumpScreenProps> = ({
                   {p.char === ' ' ? '\u00A0' : p.char}
                 </motion.span>
               ))}
-            </div>
+            </motion.div>
           )}
         </AnimatePresence>
       </div>
