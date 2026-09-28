@@ -202,7 +202,14 @@ ${answerRawText}
 
 Now extract from the answer above.`;
 
-  const EXTRACTION_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest'];
+  const EXTRACTION_MODELS = [
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
+    'gemini-flash-lite-latest',
+    'gemini-3.7-flash',
+    'gemini-3.5-flash',
+    'gemini-3.8-flash',
+  ];
 
   const numOrNull = (val: any): number | null => (typeof val === 'number' && !isNaN(val) ? val : null);
 
@@ -259,12 +266,21 @@ Now extract from the answer above.`;
   };
 }
 
+import type { ExtractedQuestionAnalysis } from '@/types/selfhaul';
+
 /**
  * Extract structured psychological analysis JSON from raw text using Gemini Flash models with fallbacks
  */
-export async function extractQuestionAnalysis(rawText: string, entryId?: string): Promise<ExtractedAnalysis> {
+export async function extractQuestionAnalysis(rawText: string, entryId?: string): Promise<ExtractedQuestionAnalysis> {
   const prompt = `Analyze the following user raw thought/doubt: "${rawText}"`;
-  const EXTRACTION_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest'];
+  const EXTRACTION_MODELS = [
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
+    'gemini-flash-lite-latest',
+    'gemini-3.7-flash',
+    'gemini-3.5-flash',
+    'gemini-3.8-flash',
+  ];
 
   for (const modelName of EXTRACTION_MODELS) {
     try {
@@ -280,7 +296,11 @@ export async function extractQuestionAnalysis(rawText: string, entryId?: string)
 
       const text = response.text || '{}';
       const parsed = JSON.parse(text);
-      if (parsed && typeof parsed === 'object' && parsed.emotional_state) {
+      if (
+        parsed &&
+        typeof parsed === 'object' &&
+        (parsed.life_domain || parsed.stated_concern || parsed.primary_emotion || parsed.agency_score !== undefined)
+      ) {
         return {
           input: {
             raw_text: rawText,
@@ -307,86 +327,33 @@ export async function extractQuestionAnalysis(rawText: string, entryId?: string)
       entry_id: entryId,
       timestamp: new Date().toISOString(),
     },
-    emotional_state: {
-      primary_emotions: [{ emotion: isCareer ? 'fear' : 'sadness', intensity: 0.65, confidence: 0.7 }],
-      overall_intensity: 0.65,
-      valence: -0.4,
-      vulnerability: 0.7,
-    },
-    situation: {
-      life_domain: isCareer ? 'career' : isRelationship ? 'relationship' : 'self-worth',
-      sub_domain: 'self-inquiry',
-      time_orientation: 'present',
-      uncertainty_level: 0.7,
-      perceived_threat: 0.5,
-    },
-    trigger: {
-      trigger_type: 'uncertainty',
-      trigger_source: 'self',
-      trigger_description: rawText,
-      confidence: 0.7,
-    },
-    concern: {
-      stated_concern: rawText,
-      feared_outcome: 'Uncertain future or lack of clarity',
-      feared_consequence: 'Continued distress',
-      underlying_need: 'security',
-      core_concern: 'Seeking clarity and agency',
-    },
-    cognitive_state: {
-      certainty: 0.3,
-      perceived_control: 0.4,
-      locus_of_control: 'mixed',
-      self_efficacy: 0.5,
-      rumination: 0.7,
-      catastrophizing: 0.4,
-      cognitive_distortions: ['catastrophizing'],
-      distortion_confidence: 0.6,
-    },
-    behavioral_state: {
-      action_orientation: 'intention-stated',
-      avoidance: 0.6,
-      reassurance_seeking: 0.3,
-      coping_response: 'emotion-focused',
-      resolution_status: 'unresolved',
-    },
-    self_relation: {
-      self_criticism: 0.6,
-      self_blame: 0.5,
-      self_worth_threat: 0.6,
-      comparison: 0.4,
-      self_talk_valence: 'critical',
-    },
-    gap_indicators: {
-      insight_vs_action_gap: 0.7,
-      responsibility_gap: 0.3,
-      stated_vs_demonstrated_agency: 'mismatch',
-      victim_framing_flag: false,
-      notes: 'Dynamic fallback extraction used due to API failure.',
-    },
+    life_domain: isCareer ? 'career' : isRelationship ? 'relationship' : 'self-worth',
+    stated_concern: rawText,
+    core_concern: 'Seeking clarity and agency',
+    primary_emotion: isCareer ? 'fear' : 'sadness',
+    emotion_intensity: 0.65,
+    trigger_type: 'uncertainty',
+    trigger_description: rawText,
+    trigger_confidence: 0.7,
+    cognitive_distortions: ['catastrophizing'],
+    agency_score: 4,
+    locus_of_control: 'mixed',
+    action_orientation: 'intention-stated',
+    ownership_score: 5,
+    overall_intensity: 0.65,
+    self_talk_valence: 'critical',
+    resolution_status: 'unresolved',
+    coping_response: 'emotion-focused',
     clinical_pattern_flags: {
       repetitive_intrusive_thought: false,
       compulsive_behavior_described: false,
       ego_dystonic_marker: false,
       reassurance_seeking_pattern: false,
       flag_confidence: 0.7,
-      flag_basis: null,
       recommend_professional_review: false,
     },
-    expression: {
-      rawness: 0.7,
-      directness: 0.7,
-      urgency: 0.6,
-      formality: 0.1,
-    },
-    recurrence: {
-      signal: 'new',
-      matched_entry_ids: [],
-    },
-    evidence: {
-      explicit: [rawText],
-      inferred: ['User expresses self-doubt and seeks clarity.'],
-    },
+    hopelessness_or_self_harm_language: false,
+    evidence_explicit: [rawText],
     overall_confidence: 0.7,
   };
 }
@@ -555,7 +522,14 @@ ${profileSummary}
 SIMILAR PAST ENTRIES:
 ${similarEntriesFormatted}`;
 
-  const FLASH_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest'];
+  const FLASH_MODELS = [
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
+    'gemini-flash-lite-latest',
+    'gemini-3.7-flash',
+    'gemini-3.5-flash',
+    'gemini-3.8-flash',
+  ];
 
   for (const modelName of FLASH_MODELS) {
     try {
@@ -614,7 +588,14 @@ OUTPUT RULES:
 - Conclude with ONE transformative, high-leverage reframe or targeted self-inquiry question that compels self-reflection and action.
 - If overall emotional distress signals are severe, adopt a supportive, stabilizing tone while maintaining psychological honesty.`;
 
-  const INSIGHT_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest'];
+  const INSIGHT_MODELS = [
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
+    'gemini-flash-lite-latest',
+    'gemini-3.7-flash',
+    'gemini-3.5-flash',
+    'gemini-3.8-flash',
+  ];
 
   for (const modelName of INSIGHT_MODELS) {
     try {

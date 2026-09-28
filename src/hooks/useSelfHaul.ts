@@ -92,7 +92,12 @@ export function useSelfHaul() {
         console.warn('Failed to load self-haul state from storage:', e);
       }
 
-      // 2. Fetch active Supabase user using getUser()
+      // Mark hydrated immediately so the UI renders instantly without hanging
+      if (isMounted) {
+        setIsHydrated(true);
+      }
+
+      // 2. Fetch active Supabase user in background
       try {
         const { data: { user }, error } = await supabase.auth.getUser();
         if (error) console.warn('Supabase getUser error:', error.message);
@@ -103,19 +108,8 @@ export function useSelfHaul() {
         }
       } catch (err) {
         console.warn('getUser catch error:', err);
-      } finally {
-        if (isMounted) {
-          setIsHydrated(true);
-        }
       }
     };
-
-    // Safety timeout: ensure loading spinner never hangs more than 2.5s
-    const hydrationTimer = setTimeout(() => {
-      if (isMounted) {
-        setIsHydrated(true);
-      }
-    }, 2500);
 
     initialize();
 
@@ -130,7 +124,6 @@ export function useSelfHaul() {
 
     return () => {
       isMounted = false;
-      clearTimeout(hydrationTimer);
       subscription.unsubscribe();
     };
   }, []);

@@ -32,18 +32,7 @@ export default function Home() {
     requestAIInsight,
   } = useSelfHaul();
 
-  if (!isHydrated) {
-    return (
-      <div className="min-h-[100dvh] w-full bg-[#030306] relative overflow-hidden flex flex-col items-center justify-center select-none">
-        <div className="absolute inset-0 bg-black pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-white/[0.03] blur-[100px] pointer-events-none" />
-        <div className="relative z-10 flex flex-col items-center gap-4">
-          <div className="w-10 h-10 rounded-full border border-white/20 border-t-white animate-spin backdrop-blur-md shadow-[0_0_15px_rgba(255,255,255,0.15)]" />
-          <span className="text-xs font-sans tracking-widest text-zinc-400 uppercase">Self-Haul</span>
-        </div>
-      </div>
-    );
-  }
+
 
   const handleLandingEnter = () => {
     if (state.user) {
