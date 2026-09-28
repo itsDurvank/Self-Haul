@@ -445,8 +445,54 @@ export function isGibberishOrShortNoise(text: string): boolean {
   return false;
 }
 
+export function isInvalidDoubtOrNonInquiry(text: string): boolean {
+  if (!text) return true;
+  const trimmed = text.trim();
+  if (trimmed.length < 3) return true;
+
+  const lower = trimmed.toLowerCase();
+
+  // 1. Pure numbers, phone numbers, or math/symbol strings
+  const digitsOnly = trimmed.replace(/\D/g, '');
+  if (digitsOnly.length >= 3 && digitsOnly.length / trimmed.length > 0.5) {
+    return true;
+  }
+  if (/^[\d\s+\-/*=().,;:#$%^&_~`|<>?!]+$/.test(trimmed)) {
+    return true;
+  }
+
+  // 2. Casual greetings, small talk, testing, or conversational chatter
+  const greetingChatPatterns = [
+    /^(hey|hi|hello|heyy+|hii+|hola|sup|yo|greetings)\s*(there|bro|dude|man|bot|ai|everyone|all|friend)?(\s*[,.!?]*)*$/i,
+    /^(how\s*(are|r|ar)\s*(you|u|ya)|how's\s*it\s*going|hows\s*it\s*going|whats\s*up|what's\s*up|how\s*do\s*you\s*do|good\s*(morning|afternoon|evening|night|day)|gm|gn)\s*[?.!]*$/i,
+    /^(hey|hi|hello)\s+(there\s+)?(how\s*(are|ar|r)\s*(you|u|ya)|what's\s*up|whats\s*up|how\s*do\s*you\s*do)[?.!]*$/i,
+    /^(test|testing|test\s*\d+|check|checking|hello\s*world|ping|pong|sample|demo|trial)[.!?]*$/i,
+    /^(who\s*(are|r)\s*(you|u)|who\s*made\s*(you|u)|what\s*(are|r)\s*(you|u)|what\s*is\s*this|tell\s*me\s*a\s*joke)[?.!]*$/i,
+  ];
+  if (greetingChatPatterns.some((pattern) => pattern.test(lower))) {
+    return true;
+  }
+
+  // 3. Standalone profanity / abuse / insults without psychological inquiry
+  const standaloneAbusePatterns = [
+    /^(fuck\s*(you|off|u)?|bitch|bastard|asshole|idiot|moron|stupid|stfu|shut\s*up|die|trash|kill\s*yourself|kys|dumbass|dick|cunt|pussy|whore|slut)\s*[.!?]*$/i,
+    /^(you\s*(are|r)\s*(stupid|an\s*idiot|trash|a\s*bitch|dumb|useless|worthless))\s*[.!?]*$/i,
+  ];
+  if (standaloneAbusePatterns.some((pattern) => pattern.test(lower))) {
+    return true;
+  }
+
+  // 4. Code / SQL / Prompt injections / HTML tags
+  if (/^<(script|iframe|img|div|a|style)/i.test(trimmed) || /(select\s+\*\s+from|drop\s+table|ignore\s+previous\s+instructions)/i.test(lower)) {
+    return true;
+  }
+
+  // 5. Check standard keyboard smash & low entropy noise
+  return isGibberishOrShortNoise(trimmed);
+}
+
 function fallbackThirdPersonRephrase(rawText: string): string {
-  if (isGibberishOrShortNoise(rawText)) {
+  if (isInvalidDoubtOrNonInquiry(rawText)) {
     return `"This one didnt make sense🥲:${rawText}"`;
   }
 
@@ -483,7 +529,7 @@ export async function rephraseDoubtToThirdPerson(
   profileSummary: string = '',
   similarPastEntries: string[] = []
 ): Promise<string> {
-  if (isGibberishOrShortNoise(rawText)) {
+  if (isInvalidDoubtOrNonInquiry(rawText)) {
     return `"This one didnt make sense🥲:${rawText}"`;
   }
 
@@ -494,25 +540,28 @@ Rewrite the user's personal question or worry as a short third-person narration,
 
 RULES
 1. Never use "I" or "you." Use third-person perspectives ("they", "a person", "an individual", "their mind", or direct descriptive phrasing).
-2. DIVERSIFY OPENINGS (CRITICAL): DO NOT constantly start with the word "Someone". Vary your sentence starters naturally and dynamically. Use varied grammatical constructs such as:
-   - "They find themselves caught..."
-   - "There is an underlying dread..."
-   - "A persistent doubt lingers around..."
-   - "They know what needs to be done, yet..."
-   - "A person caught between..."
-   - "Watching others advance creates a quiet sting..."
-   - "Behind the daily routine lies..."
-   - "A heavy friction exists between..."
+2. DIVERSIFY OPENINGS (CRITICAL): DO NOT constantly start with the word "Someone". Vary your sentence starters naturally and dynamically.
 3. Do not phrase the output as a question. It must be a statement or confession, not an inquiry.
 4. Preserve the exact emotional intensity of the original. Do not soften, reassure, or add hope that wasn't there. Do not minimize the feeling.
 5. If the original contains specific, concrete details (a job, a person, a decision, a comparison), preserve and reflect those specifics — do not strip them out or generalize them away.
-6. If the original is short, vague, or general (e.g. "I'm not feeling well emotionally"), do NOT simply restate it in the same words with the pronouns swapped. Instead, gently elaborate the underlying felt experience in plain, human language without inventing concrete fake events.
+6. If the original is short, vague, or general (e.g. "I'm not feeling well emotionally"), gently elaborate the underlying felt experience in plain, human language without inventing concrete fake events.
 7. The rephrase should feel like it says MORE than the original in emotional depth, never LESS.
 8. Keep it to 1-3 sentences maximum.
 9. Match the register of the input — raw and blunt stays raw and blunt.
 10. If PROFILE CONTEXT or SIMILAR PAST ENTRIES are provided, use them only to calibrate tone and phrasing style. Never reference past entries directly inside the output, and never imply continuity ("again," "still," "as before").
-11. Output ONLY the rephrased narration. No preamble, no explanation, no quotation marks, no labels, no prefix like "Someone is carrying this doubt:" — return the narration text alone.
-12. CRITICAL GIBBERISH RULE: If the original input is random letters, keyboard smash, gibberish, symbols, or non-dictionary noise (e.g. 'df', 'asdf', 'fdasfsda', '123', '???', 'hjkl'), output strictly: "This one didnt make sense🥲:<original_text>"
+11. Output ONLY the rephrased narration. No preamble, no explanation, no quotation marks, no labels, no prefix — return the narration text alone.
+12. CRITICAL INVALID / NON-INQUIRY / GIBBERISH RULE:
+If the input is:
+- A casual greeting or small-talk (e.g. "hey there how ar you", "hello", "hi", "how are you", "what's up", "good morning")
+- A test message (e.g. "test", "testing 123", "sample")
+- Random numbers or phone numbers (e.g. "9876543210", "12345")
+- Standalone abuse, profanity, or insults (e.g. "fuck you", "idiot", "shut up")
+- Random letters, keyboard smash, or symbols (e.g. "asdf", "df", "???", "123")
+- Non-reflective statements with zero personal vulnerability or psychological inquiry
+
+DO NOT invent a fake psychological dilemma.
+Output strictly in this exact format:
+"This one didnt make sense🥲:<original_text>"
 
 EXAMPLES
 
@@ -524,6 +573,12 @@ Correct rephrase: "A heavy uncertainty hangs over where their work is heading. T
 
 Original: "I keep putting off studying and I feel like a failure"
 Correct rephrase: "Every attempt to begin studying collides with immediate procrastination, leaving behind a sharp, self-inflicted sense of falling behind."
+
+Original: "hey there how ar you"
+Correct rephrase: "This one didnt make sense🥲:hey there how ar you"
+
+Original: "9876543210"
+Correct rephrase: "This one didnt make sense🥲:9876543210"
 
 Original: "df"
 Correct rephrase: "This one didnt make sense🥲:df"`;
