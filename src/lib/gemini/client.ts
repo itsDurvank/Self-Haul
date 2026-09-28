@@ -461,10 +461,18 @@ function fallbackThirdPersonRephrase(rawText: string): string {
     .replace(/\b(i)\b/gi, 'they')
     .trim();
 
-  cleanText = cleanText.charAt(0).toUpperCase() + cleanText.slice(1);
+  cleanText = cleanText.charAt(0).toLowerCase() + cleanText.slice(1);
   if (!cleanText.endsWith('.')) cleanText += '.';
 
-  return `Someone is processing a quiet burden: ${cleanText.toLowerCase().replace(/^they /, 'they ')}`;
+  const prefixes = [
+    'They find themselves facing a quiet burden: ',
+    'There is an underlying friction: ',
+    'A persistent doubt weighs on their mind: ',
+    'They are working through an unresolved tension: ',
+    'Looking at their current situation, ',
+  ];
+  const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+  return `${prefix}${cleanText}`;
 }
 
 /**
@@ -485,26 +493,37 @@ TASK
 Rewrite the user's personal question or worry as a short third-person narration, as if describing a stranger who just confessed this exact doubt to you. This is NOT a question. It is a statement, told from the outside, about someone else's experience.
 
 RULES
-1. Never use "I" or "you." Use "someone," "a person," "they," or "them."
-2. Do not phrase the output as a question. It must be a statement or confession, not an inquiry.
-3. Preserve the exact emotional intensity of the original. Do not soften, reassure, or add hope that wasn't there. Do not minimize the feeling.
-4. If the original contains specific, concrete details (a job, a person, a decision, a comparison), preserve and reflect those specifics — do not strip them out or generalize them away.
-5. If the original is short, vague, or general (e.g. "I'm not feeling well emotionally"), do NOT simply restate it in the same words with the pronouns swapped. Instead, gently elaborate the underlying felt experience in plain, human language — what it might mean to be struggling to process emotions, searching for steadiness, or wanting peace — without inventing concrete facts (no fake job, no fake person, no fake event) that were never stated or implied.
-6. The rephrase should feel like it says MORE than the original in emotional depth, never LESS. A rephrase that is just as thin as the input has failed, even if it's technically accurate.
-7. Keep it to 2-3 sentences maximum.
-8. Match the register of the input — raw and blunt stays raw and blunt; it should not become clinical or overly poetic unless the original was.
-9. If PROFILE CONTEXT or SIMILAR PAST ENTRIES are provided, use them only to calibrate tone and phrasing style. Never reference past entries directly inside the output, and never imply continuity ("again," "still," "as before").
-10. Output ONLY the rephrased narration. No preamble, no explanation, no quotation marks, no labels, no prefix like "Someone is carrying this doubt:" — return the narration text alone.
-11. CRITICAL GIBBERISH RULE: If the original input is random letters, keyboard smash, gibberish, symbols, or non-dictionary noise (e.g. 'df', 'asdf', 'fdasfsda', '123', '???', 'hjkl'), DO NOT fabricate a story or emotional state. Output strictly: "This one didnt make sense🥲:<original_text>"
+1. Never use "I" or "you." Use third-person perspectives ("they", "a person", "an individual", "their mind", or direct descriptive phrasing).
+2. DIVERSIFY OPENINGS (CRITICAL): DO NOT constantly start with the word "Someone". Vary your sentence starters naturally and dynamically. Use varied grammatical constructs such as:
+   - "They find themselves caught..."
+   - "There is an underlying dread..."
+   - "A persistent doubt lingers around..."
+   - "They know what needs to be done, yet..."
+   - "A person caught between..."
+   - "Watching others advance creates a quiet sting..."
+   - "Behind the daily routine lies..."
+   - "A heavy friction exists between..."
+3. Do not phrase the output as a question. It must be a statement or confession, not an inquiry.
+4. Preserve the exact emotional intensity of the original. Do not soften, reassure, or add hope that wasn't there. Do not minimize the feeling.
+5. If the original contains specific, concrete details (a job, a person, a decision, a comparison), preserve and reflect those specifics — do not strip them out or generalize them away.
+6. If the original is short, vague, or general (e.g. "I'm not feeling well emotionally"), do NOT simply restate it in the same words with the pronouns swapped. Instead, gently elaborate the underlying felt experience in plain, human language without inventing concrete fake events.
+7. The rephrase should feel like it says MORE than the original in emotional depth, never LESS.
+8. Keep it to 1-3 sentences maximum.
+9. Match the register of the input — raw and blunt stays raw and blunt.
+10. If PROFILE CONTEXT or SIMILAR PAST ENTRIES are provided, use them only to calibrate tone and phrasing style. Never reference past entries directly inside the output, and never imply continuity ("again," "still," "as before").
+11. Output ONLY the rephrased narration. No preamble, no explanation, no quotation marks, no labels, no prefix like "Someone is carrying this doubt:" — return the narration text alone.
+12. CRITICAL GIBBERISH RULE: If the original input is random letters, keyboard smash, gibberish, symbols, or non-dictionary noise (e.g. 'df', 'asdf', 'fdasfsda', '123', '???', 'hjkl'), output strictly: "This one didnt make sense🥲:<original_text>"
 
 EXAMPLES
 
 Original: "I am not feeling very well emotionally"
-Failed rephrase (too thin, just restates): "Someone is not feeling very well emotionally."
-Correct rephrase: "Someone is going through a hard stretch emotionally, struggling to steady themselves, and isn't quite sure what would actually bring them back to a sense of peace."
+Correct rephrase: "They are going through an unsteadied stretch emotionally, struggling to regain their footing without quite knowing what would actually restore their inner quiet."
 
 Original: "I am very afraid of my career I don't know where to go will I ever get a job or not I have a plan but I am very afraid to follow it due to uncertainty of it because I compare path of others and I wonder if mine is right"
-Correct rephrase: "Someone is afraid of where their career is heading. They have a plan, but they can't bring themselves to follow it, because they keep measuring it against everyone else's path and wondering if theirs was ever the right one."
+Correct rephrase: "A heavy uncertainty hangs over where their work is heading. They hold a plan in their hands, but paralysis sets in because they constantly measure their trajectory against other people's milestones."
+
+Original: "I keep putting off studying and I feel like a failure"
+Correct rephrase: "Every attempt to begin studying collides with immediate procrastination, leaving behind a sharp, self-inflicted sense of falling behind."
 
 Original: "df"
 Correct rephrase: "This one didnt make sense🥲:df"`;
