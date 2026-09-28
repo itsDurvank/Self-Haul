@@ -24,6 +24,29 @@ export function getAi() {
   return new GoogleGenAI({ apiKey });
 }
 
+export const GEMINI_GENERATIVE_MODELS = [
+  'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite',
+  'gemini-flash-lite-latest',
+  'gemini-flash-latest',
+  'gemini-3.7-flash',
+  'gemini-3.6-flash',
+  'gemini-3.5-flash',
+  'gemini-3.8-flash',
+  'gemini-3-flash-preview',
+  'gemini-3.1-flash-lite-preview',
+  'gemini-2.5-flash-lite',
+  'gemini-2.5-pro',
+  'gemini-3.1-pro-preview',
+  'gemini-pro-latest',
+];
+
+export const GEMINI_EMBEDDING_MODELS = [
+  'gemini-embedding-001',
+  'gemini-embedding-2',
+  'gemini-embedding-2-preview',
+];
+
 export interface ExtractedAnalysis {
   input: {
     raw_text: string;
@@ -202,18 +225,9 @@ ${answerRawText}
 
 Now extract from the answer above.`;
 
-  const EXTRACTION_MODELS = [
-    'gemini-3.5-flash-lite',
-    'gemini-3.1-flash-lite',
-    'gemini-flash-lite-latest',
-    'gemini-3.7-flash',
-    'gemini-3.5-flash',
-    'gemini-3.8-flash',
-  ];
-
   const numOrNull = (val: any): number | null => (typeof val === 'number' && !isNaN(val) ? val : null);
 
-  for (const modelName of EXTRACTION_MODELS) {
+  for (const modelName of GEMINI_GENERATIVE_MODELS) {
     try {
       const response = await getAi().models.generateContent({
         model: modelName,
@@ -273,16 +287,8 @@ import type { ExtractedQuestionAnalysis } from '@/types/selfhaul';
  */
 export async function extractQuestionAnalysis(rawText: string, entryId?: string): Promise<ExtractedQuestionAnalysis> {
   const prompt = `Analyze the following user raw thought/doubt: "${rawText}"`;
-  const EXTRACTION_MODELS = [
-    'gemini-3.5-flash-lite',
-    'gemini-3.1-flash-lite',
-    'gemini-flash-lite-latest',
-    'gemini-3.7-flash',
-    'gemini-3.5-flash',
-    'gemini-3.8-flash',
-  ];
 
-  for (const modelName of EXTRACTION_MODELS) {
+  for (const modelName of GEMINI_GENERATIVE_MODELS) {
     try {
       const response = await getAi().models.generateContent({
         model: modelName,
@@ -362,9 +368,7 @@ export async function extractQuestionAnalysis(rawText: string, entryId?: string)
  * Generate 768-dimension vector embedding for text using gemini-embedding-001 (or fallback)
  */
 export async function generateTextEmbedding(text: string): Promise<number[]> {
-  const EMBEDDING_MODELS = ['gemini-embedding-001', 'gemini-embedding-2'];
-
-  for (const modelName of EMBEDDING_MODELS) {
+  for (const modelName of GEMINI_EMBEDDING_MODELS) {
     try {
       const response = await getAi().models.embedContent({
         model: modelName,
@@ -596,16 +600,7 @@ ${profileSummary}
 SIMILAR PAST ENTRIES:
 ${similarEntriesFormatted}`;
 
-  const FLASH_MODELS = [
-    'gemini-3.5-flash-lite',
-    'gemini-3.1-flash-lite',
-    'gemini-flash-lite-latest',
-    'gemini-3.7-flash',
-    'gemini-3.5-flash',
-    'gemini-3.8-flash',
-  ];
-
-  for (const modelName of FLASH_MODELS) {
+  for (const modelName of GEMINI_GENERATIVE_MODELS) {
     try {
       const response = await getAi().models.generateContent({
         model: modelName,
@@ -664,16 +659,7 @@ OUTPUT RULES:
 - Speak directly, perceptively, and with clinical depth. No therapeutic fluff, preambles, or clinical diagnostic labels (e.g. do not label as "OCD" or "depression").
 - If overall emotional distress signals are severe, adopt a supportive, stabilizing tone while maintaining psychological honesty.`;
 
-  const INSIGHT_MODELS = [
-    'gemini-3.5-flash-lite',
-    'gemini-3.1-flash-lite',
-    'gemini-flash-lite-latest',
-    'gemini-3.7-flash',
-    'gemini-3.5-flash',
-    'gemini-3.8-flash',
-  ];
-
-  for (const modelName of INSIGHT_MODELS) {
+  for (const modelName of GEMINI_GENERATIVE_MODELS) {
     try {
       const response = await getAi().models.generateContent({
         model: modelName,
