@@ -25,18 +25,16 @@ export function getAi() {
 }
 
 export const GEMINI_GENERATIVE_MODELS = [
+  'gemini-3.6-flash',
+  'gemini-3.7-flash',
+  'gemini-3.5-flash',
+  'gemini-flash-latest',
+  'gemini-3.8-flash',
   'gemini-3.5-flash-lite',
   'gemini-3.1-flash-lite',
   'gemini-flash-lite-latest',
-  'gemini-flash-latest',
-  'gemini-3.7-flash',
-  'gemini-3.6-flash',
-  'gemini-3.5-flash',
-  'gemini-3.8-flash',
   'gemini-3-flash-preview',
   'gemini-3.1-flash-lite-preview',
-  'gemini-2.5-flash-lite',
-  'gemini-2.5-pro',
   'gemini-3.1-pro-preview',
   'gemini-pro-latest',
 ];
@@ -259,8 +257,9 @@ Now extract from the answer above.`;
             : (Array.isArray(parsed.evidence_explicit) ? parsed.evidence_explicit : [answerRawText]),
         };
       }
-    } catch (err) {
-      console.warn(`Gemini answer extraction model ${modelName} call failed, trying next:`, err);
+    } catch (err: any) {
+      const status = err?.status || err?.code || (err?.message?.includes('503') ? 503 : 'busy');
+      console.warn(`[Gemini Fallback] Answer extraction: ${modelName} (${status}) -> advancing to next model...`);
     }
   }
 
@@ -316,8 +315,9 @@ export async function extractQuestionAnalysis(rawText: string, entryId?: string)
           ...parsed,
         };
       }
-    } catch (err) {
-      console.warn(`Gemini extraction model ${modelName} call failed, trying next:`, err);
+    } catch (err: any) {
+      const status = err?.status || err?.code || (err?.message?.includes('503') ? 503 : 'busy');
+      console.warn(`[Gemini Fallback] Question extraction: ${modelName} (${status}) -> advancing to next model...`);
     }
   }
 
@@ -615,8 +615,9 @@ ${similarEntriesFormatted}`;
       if (result && !result.includes('API key not valid')) {
         return result.replace(/^["']|["']$/g, '');
       }
-    } catch (err) {
-      console.warn(`Gemini model ${modelName} call warning:`, err);
+    } catch (err: any) {
+      const status = err?.status || err?.code || (err?.message?.includes('503') ? 503 : 'busy');
+      console.warn(`[Gemini Fallback] Rephrase: ${modelName} (${status}) -> advancing to next model...`);
     }
   }
 
@@ -673,8 +674,9 @@ OUTPUT RULES:
       if (response.text?.trim()) {
         return response.text.trim();
       }
-    } catch (err) {
-      console.warn(`Gemini insight model ${modelName} warning:`, err);
+    } catch (err: any) {
+      const status = err?.status || err?.code || (err?.message?.includes('503') ? 503 : 'busy');
+      console.warn(`[Gemini Fallback] Insight: ${modelName} (${status}) -> advancing to next model...`);
     }
   }
 
