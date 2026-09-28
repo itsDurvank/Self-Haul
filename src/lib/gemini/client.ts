@@ -582,7 +582,7 @@ export async function generateInsightGapAnalysis(
   vectorMatches?: any[],
   areaSnapshots?: Record<string, string>
 ): Promise<string> {
-  const prompt = `Act as an elite clinical psychologist and master self-inquiry consultant. Perform a deep, high-leverage psychological gap analysis (100–140 words max) analyzing the user's current session (questions, written answers, and computed deltas) against their life-area snapshots and past RAG history.
+  const prompt = `Act as an elite clinical psychologist and master self-inquiry consultant. Perform a deep, high-leverage psychological gap analysis (120–175 words dynamically tailored to the complexity of the session) analyzing the user's current session (questions, written answers, and computed deltas) against their life-area snapshots and past RAG history.
 
 Previous Life-Area Snapshots:
 ${areaSnapshots && Object.keys(areaSnapshots).length > 0 ? JSON.stringify(areaSnapshots, null, 2) : `"${profileSummary || 'Cold start - no previous area snapshots.'}"`}
@@ -602,9 +602,11 @@ DIAGNOSTIC SCOPE (Evaluate across all psychological & behavioral dimensions):
 - Recurring Behavioral Loops: Unaddressed patterns or evasive cycles appearing across past RAG vector matches and current answers.
 
 OUTPUT RULES:
-- Identify the SINGLE most critical blind spot, cognitive flaw, or agency gap in their thinking.
-- Speak directly, perceptively, and with clinical depth. No therapeutic fluff, preambles, or diagnostic labels (e.g. do not label as "OCD" or "depression").
-- Conclude with ONE transformative, high-leverage reframe or targeted self-inquiry question that compels self-reflection and action.
+- Length: Deliver between 120 and 175 words of deep, high-impact clinical prose.
+- Structure into two clear paragraphs:
+  1. Diagnostic Breakdown (80-120 words): Identify the core psychological dynamics, comparing past behavioral loops/snapshots with current answers and deltas. Dissect defense mechanisms, agency shifts, or subtle avoidance patterns.
+  2. Targeted Socratic Catalyst / High-Leverage Reframe (35-55 words): A transformative, penetrative reframe or question that compels radical honesty and strategic action.
+- Speak directly, perceptively, and with clinical depth. No therapeutic fluff, preambles, or clinical diagnostic labels (e.g. do not label as "OCD" or "depression").
 - If overall emotional distress signals are severe, adopt a supportive, stabilizing tone while maintaining psychological honesty.`;
 
   const INSIGHT_MODELS = [
