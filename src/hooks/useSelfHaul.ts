@@ -433,6 +433,19 @@ export function useSelfHaul() {
     }));
   }, []);
 
+  const startNewRitual = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY);
+    setState((prev) => ({
+      ...prev,
+      questions: [],
+      queue: [],
+      currentIndex: 0,
+      aiInsightModalOpen: false,
+      aiInsightText: undefined,
+      stage: 'dump',
+    }));
+  }, []);
+
   return {
     state,
     isHydrated,
@@ -446,6 +459,7 @@ export function useSelfHaul() {
     answerCurrentQuestion,
     skipCurrentQuestion,
     burnAll,
+    startNewRitual,
     toggleSound,
     getCurrentQuestion,
     requestAIInsight,

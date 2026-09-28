@@ -80,17 +80,27 @@ export async function saveQuestionToSupabase(userId: string, rawText: string) {
 export async function saveAnswerToSupabase(userId: string, questionId: string, answerText: string) {
   try {
     const supabase = createClient();
-    const { error } = await supabase.from('answers').insert([
-      {
-        user_id: userId,
-        question_id: questionId,
-        raw_text: answerText,
-      },
-    ]);
+    const { error } = await supabase.from('answers').upsert(
+      [
+        {
+          user_id: userId,
+          question_id: questionId,
+          raw_text: answerText,
+        },
+      ],
+      { onConflict: 'question_id' }
+    );
 
     if (error) {
       console.warn('Failed to save answer to Supabase:', error.message);
     }
+
+    // Trigger asynchronous answer analysis & vector embedding update
+    fetch('/api/answer-analysis', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ questionId, answerText, userId }),
+    }).catch((e) => console.warn('Answer analysis trigger warning:', e));
   } catch (err) {
     console.warn('Supabase insert answer error:', err);
   }

@@ -1,0 +1,102 @@
+{
+  "input": {
+    "raw_text": "i am feeling really low and i have a tightness in my chest due to anxiety",
+    "timestamp": "2026-09-27T17:21:08.183Z"
+  },
+  "emotional_state": {
+    "primary_emotions": [
+      {
+        "emotion": "sadness",
+        "intensity": 0.8,
+        "confidence": 0.9
+      },
+      {
+        "emotion": "fear",
+        "intensity": 0.8,
+        "confidence": 0.9
+      }
+    ],
+    "overall_intensity": 0.8,
+    "valence": -0.7,
+    "vulnerability": 0.9
+  },
+  "situation": {
+    "life_domain": "health",
+    "sub_domain": "physical anxiety symptoms",
+    "time_orientation": "present",
+    "uncertainty_level": 0.5,
+    "perceived_threat": 0.6
+  },
+  "trigger": {
+    "trigger_type": "uncertainty",
+    "trigger_source": "self",
+    "trigger_description": "experiencing anxiety and low mood",
+    "confidence": 0.7
+  },
+  "concern": {
+    "stated_concern": "feeling really low with chest tightness due to anxiety",
+    "feared_outcome": "prolonged distress",
+    "feared_consequence": "physical health impact from anxiety",
+    "underlying_need": "security",
+    "core_concern": "distress from acute anxiety and low mood"
+  },
+  "cognitive_state": {
+    "certainty": 0.5,
+    "perceived_control": 0.3,
+    "locus_of_control": "internal",
+    "self_efficacy": 0.4,
+    "rumination": 0.5,
+    "catastrophizing": 0.4,
+    "cognitive_distortions": [],
+    "distortion_confidence": 0.5
+  },
+  "behavioral_state": {
+    "action_orientation": "rumination-only",
+    "avoidance": 0.3,
+    "reassurance_seeking": 0.2,
+    "coping_response": "emotion-focused",
+    "resolution_status": "unresolved"
+  },
+  "self_relation": {
+    "self_criticism": 0.2,
+    "self_blame": 0.1,
+    "self_worth_threat": 0.3,
+    "comparison": 0,
+    "self_talk_valence": "neutral"
+  },
+  "gap_indicators": {
+    "insight_vs_action_gap": 0.4,
+    "responsibility_gap": 0.2,
+    "stated_vs_demonstrated_agency": "matches",
+    "victim_framing_flag": false,
+    "notes": "User is experiencing physical symptoms of anxiety and low mood."
+  },
+  "clinical_pattern_flags": {
+    "repetitive_intrusive_thought": false,
+    "compulsive_behavior_described": false,
+    "ego_dystonic_marker": false,
+    "reassurance_seeking_pattern": false,
+    "flag_confidence": 0.8,
+    "flag_basis": null,
+    "recommend_professional_review": false
+  },
+  "expression": {
+    "rawness": 0.9,
+    "directness": 0.9,
+    "urgency": 0.6,
+    "formality": 0.1
+  },
+  "recurrence": {
+    "signal": "new",
+    "matched_entry_ids": []
+  },
+  "evidence": {
+    "explicit": [
+      "i am feeling really low and i have a tightness in my chest due to anxiety"
+    ],
+    "inferred": [
+      "User is experiencing acute physical and emotional distress."
+    ]
+  },
+  "overall_confidence": 0.85
+}

@@ -26,6 +26,7 @@ export default function Home() {
     answerCurrentQuestion,
     skipCurrentQuestion,
     burnAll,
+    startNewRitual,
     toggleSound,
     getCurrentQuestion,
     requestAIInsight,
@@ -110,7 +111,7 @@ export default function Home() {
           <Reflection
             questions={state.questions}
             onBurnAll={burnAll}
-            onRestart={() => setStage('dump')}
+            onRestart={startNewRitual}
             onRequestAIInsight={requestAIInsight}
           />
         );

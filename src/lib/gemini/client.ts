@@ -208,6 +208,104 @@ Analyze the user's raw thought and extract psychological indicators strictly mat
 
 DO NOT invent facts; use null or 0 if evidence is lacking. Output ONLY the valid JSON object.`;
 
+const ANSWER_EXTRACTION_SYSTEM_INSTRUCTION = `You are the Answer Analysis Engine for Self-Haul. The user was shown a third-person narration of their own doubt, and asked to respond as if advising a stranger. You will extract a small, comparable set of signals from their answer, using the ORIGINAL QUESTION's extracted data as context so your scores are calibrated against the same situation.
+
+CRITICAL RULES
+1. Every field must be directly comparable to its counterpart in the question's extraction. Use the same scales.
+2. If a field does not apply to this answer (e.g. locus_of_control or ownership_score when the situation is a physiological symptom with no decision or responsibility content), return null. Do not force a value.
+3. Do not reward vague reassurance as "resolution." "It'll be fine" is not resolved, in-progress, or a concrete action, it's avoidance dressed as comfort — score it accordingly.
+4. Base every field only on what the answer actually says, not on what you assume a "good" answer would say.
+
+SCHEMA
+{
+  "agency_score": "0-10 or null",
+  "locus_of_control": "-1 (external) | 0 (mixed) | 1 (internal) | null",
+  "action_orientation": "0 (rumination-only) | 1 (intention-stated) | 2 (action-taken)",
+  "action_specificity": "0 (none) | 1 (vague) | 2 (concrete)",
+  "ownership_score": "0-10 or null",
+  "emotional_intensity": "0-10",
+  "self_talk_valence": "-1 (critical) | 0 (neutral) | 1 (compassionate)",
+  "resolution_status": "0 (unresolved) | 1 (in-progress) | 2 (resolved)",
+  "coping_orientation": "-1 (avoidant) | 0 (emotion-focused) | 1 (problem-focused)",
+  "engaged_with_prompt": "true | false",
+  "answer_summary": "one-line summary of what the person advised",
+  "evidence_explicit": ["direct paraphrase of what was actually written in the answer"]
+}`;
+
+/**
+ * Extract structured answer analysis JSON from raw answer text using Gemini
+ */
+export async function extractAnswerAnalysis(
+  questionExtractionJson: any,
+  rephrasedText: string,
+  answerRawText: string
+): Promise<any> {
+  const prompt = `CONTEXT (the question this answer responds to):
+${JSON.stringify(questionExtractionJson, null, 2)}
+
+ORIGINAL DOUBT SHOWN TO THE USER:
+${rephrasedText}
+
+USER'S ANSWER:
+${answerRawText}
+
+Now extract from the answer above.`;
+
+  const EXTRACTION_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest'];
+
+  for (const modelName of EXTRACTION_MODELS) {
+    try {
+      const response = await getAi().models.generateContent({
+        model: modelName,
+        contents: prompt,
+        config: {
+          responseMimeType: 'application/json',
+          temperature: 0.2,
+          systemInstruction: ANSWER_EXTRACTION_SYSTEM_INSTRUCTION,
+        },
+      });
+
+      const text = response.text || '{}';
+      const parsed = JSON.parse(text);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          agency_score: typeof parsed.agency_score === 'number' ? parsed.agency_score : null,
+          locus_of_control: typeof parsed.locus_of_control === 'number' ? parsed.locus_of_control : null,
+          action_orientation: typeof parsed.action_orientation === 'number' ? parsed.action_orientation : 0,
+          action_specificity: typeof parsed.action_specificity === 'number' ? parsed.action_specificity : 0,
+          ownership_score: typeof parsed.ownership_score === 'number' ? parsed.ownership_score : null,
+          emotional_intensity: typeof parsed.emotional_intensity === 'number' ? parsed.emotional_intensity : 5,
+          self_talk_valence: typeof parsed.self_talk_valence === 'number' ? parsed.self_talk_valence : 0,
+          resolution_status: typeof parsed.resolution_status === 'number' ? parsed.resolution_status : 0,
+          coping_orientation: typeof parsed.coping_orientation === 'number' ? parsed.coping_orientation : 0,
+          engaged_with_prompt: parsed.engaged_with_prompt !== false,
+          answer_summary: parsed.answer_summary || answerRawText,
+          evidence_explicit: Array.isArray(parsed.evidence?.explicit)
+            ? parsed.evidence.explicit
+            : (Array.isArray(parsed.evidence_explicit) ? parsed.evidence_explicit : [answerRawText]),
+        };
+      }
+    } catch (err) {
+      console.warn(`Gemini answer extraction model ${modelName} call failed, trying next:`, err);
+    }
+  }
+
+  return {
+    agency_score: 5,
+    locus_of_control: 0,
+    action_orientation: 1,
+    action_specificity: 1,
+    ownership_score: 5,
+    emotional_intensity: 5,
+    self_talk_valence: 0,
+    resolution_status: 1,
+    coping_orientation: 0,
+    engaged_with_prompt: true,
+    answer_summary: answerRawText,
+    evidence_explicit: [answerRawText],
+  };
+}
+
 /**
  * Extract structured psychological analysis JSON from raw text using Gemini Flash models with fallbacks
  */
@@ -387,10 +485,43 @@ export async function generateTextEmbedding(text: string): Promise<number[]> {
 export function isGibberishOrShortNoise(text: string): boolean {
   const trimmed = text.trim();
   if (trimmed.length < 3) return true;
+
   const lettersOnly = trimmed.replace(/[^a-zA-Z]/g, '');
   if (lettersOnly.length < 3) return true;
-  const vowels = trimmed.match(/[aeiouyAEIOUY]/g);
-  if (!vowels && trimmed.length < 8) return true;
+
+  // Single word / token without spaces
+  const isSingleWord = !/\s/.test(trimmed);
+  if (isSingleWord) {
+    const lower = lettersOnly.toLowerCase();
+
+    // 1. Repeating character 3+ times in a row
+    if (/(.)\1{2,}/.test(lower)) return true;
+
+    // 2. Common keyboard smash patterns
+    const smashPatterns = [
+      /asdf|sdfg|dfgh|fghj|ghjk|hjkl|jkl;/,
+      /lkjh|kjhg|hgfd|gfda|fdas|dasf|asfs|fsda/,
+      /qwer|wert|erty|rtyu|tyui|yuio|uiop/,
+      /poiu|oiuy|iuyt|uytr|ytre|trew|rewq/,
+      /zxcv|xcvb|cvbn|vbnm|mnbv|nbvc|bvcx|vcxz/,
+      /1234|2345|3456|4567|5678|6789|0987|9876|8765|7654|6543|5432|4321/
+    ];
+    if (smashPatterns.some((pattern) => pattern.test(lower))) return true;
+
+    // 3. 4 or more consecutive consonants (e.g. "sfsd", "fdsf")
+    if (/[bcdfghjklmnpqrstvwxz]{4,}/.test(lower)) return true;
+
+    // 4. Low vowel count for single words (length >= 5 and < 25% vowels)
+    const vowels = lower.match(/[aeiouy]/g);
+    const vowelCount = vowels ? vowels.length : 0;
+    if (vowelCount === 0) return true;
+    if (lower.length >= 5 && vowelCount / lower.length < 0.25) return true;
+  }
+
+  // General check for entire text having no vowels if short
+  const allVowels = trimmed.match(/[aeiouyAEIOUY]/g);
+  if (!allVowels && trimmed.length < 8) return true;
+
   return false;
 }
 
@@ -444,7 +575,7 @@ RULES
 8. Match the register of the input — raw and blunt stays raw and blunt; it should not become clinical or overly poetic unless the original was.
 9. If PROFILE CONTEXT or SIMILAR PAST ENTRIES are provided, use them only to calibrate tone and phrasing style. Never reference past entries directly inside the output, and never imply continuity ("again," "still," "as before").
 10. Output ONLY the rephrased narration. No preamble, no explanation, no quotation marks, no labels, no prefix like "Someone is carrying this doubt:" — return the narration text alone.
-11. CRITICAL GIBBERISH RULE: If the original input is random letters, keyboard smash, gibberish, symbols, or non-dictionary noise (e.g. 'df', 'asdf', '123', '???', 'hjkl'), DO NOT fabricate a story or emotional state. Output strictly: [Unclear entry: "<original_text>"]
+11. CRITICAL GIBBERISH RULE: If the original input is random letters, keyboard smash, gibberish, symbols, or non-dictionary noise (e.g. 'df', 'asdf', 'fdasfsda', '123', '???', 'hjkl'), DO NOT fabricate a story or emotional state. Output strictly: "This one didnt make sense🥲:<original_text>"
 
 EXAMPLES
 
@@ -456,7 +587,7 @@ Original: "I am very afraid of my career I don't know where to go will I ever ge
 Correct rephrase: "Someone is afraid of where their career is heading. They have a plan, but they can't bring themselves to follow it, because they keep measuring it against everyone else's path and wondering if theirs was ever the right one."
 
 Original: "df"
-Correct rephrase: [Unclear entry: "df"]`;
+Correct rephrase: "This one didnt make sense🥲:df"`;
 
   const similarEntriesFormatted = similarPastEntries.length > 0
     ? similarPastEntries.map((e) => `- ${e}`).join('\n')
@@ -500,19 +631,20 @@ ${similarEntriesFormatted}`;
  * Generate consultant-style gap analysis AI Insight (On-Demand only)
  */
 export async function generateInsightGapAnalysis(
-  sessionExtractions: ExtractedAnalysis[],
+  sessionExtractions: any[],
   profileSummary?: string,
-  vectorMatches?: ExtractedAnalysis[]
+  vectorMatches?: any[],
+  areaSnapshots?: Record<string, string>
 ): Promise<string> {
-  const prompt = `Act as an elite clinical psychologist and master self-inquiry consultant. Perform a deep, high-leverage psychological gap analysis (100–140 words max) analyzing the user's current session against their past history.
+  const prompt = `Act as an elite clinical psychologist and master self-inquiry consultant. Perform a deep, high-leverage psychological gap analysis (100–140 words max) analyzing the user's current session (questions, written answers, and computed deltas) against their life-area snapshots and past RAG history.
 
-Long-Term Memory Snapshot:
-"${profileSummary || 'Cold start - no previous summary profile.'}"
+Previous Life-Area Snapshots:
+${areaSnapshots && Object.keys(areaSnapshots).length > 0 ? JSON.stringify(areaSnapshots, null, 2) : `"${profileSummary || 'Cold start - no previous area snapshots.'}"`}
 
-Current Session Extractions (JSON):
+Current Session Extractions (Question + Written Answer + Deltas):
 ${JSON.stringify(sessionExtractions, null, 2)}
 
-Relevant Past Vector Matches (RAG Context):
+Relevant Past Vector Matches (RAG Context with Past Doubts & Advice Summaries):
 ${JSON.stringify(vectorMatches || [], null, 2)}
 
 DIAGNOSTIC SCOPE (Evaluate across all psychological & behavioral dimensions):
@@ -520,7 +652,7 @@ DIAGNOSTIC SCOPE (Evaluate across all psychological & behavioral dimensions):
 - Insight vs. Action Disconnect: High intellectual understanding or rumination with zero concrete behavioral action steps.
 - Defense Mechanisms & Blind Spots: Intellectualization, rationalization, projection, displacement, or subtle emotional avoidance.
 - Cognitive Distortions: Catastrophizing, all-or-nothing framing, mind-reading, or mistaking feelings for objective reality.
-- Hidden Contradictions: Direct mismatches between what the user claims to want vs the choices/behaviors they describe.
+- Hidden Contradictions: Direct mismatches between what the user claims to want vs the choices/behaviors they describe in their answers.
 - Recurring Behavioral Loops: Unaddressed patterns or evasive cycles appearing across past RAG vector matches and current answers.
 
 OUTPUT RULES:

@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS public.answers (
     question_id UUID NOT NULL REFERENCES public.questions(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     raw_text TEXT NOT NULL,
+    answer_analysis JSONB,
+    deltas JSONB,
     created_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
@@ -83,7 +85,17 @@ CREATE TABLE IF NOT EXISTS public.user_summary_snapshots (
     period_covered TEXT
 );
 
--- 9. User AI State (Tracking AI Insight usage)
+-- 9. User Area Snapshots (Per-life-area snapshots)
+CREATE TABLE IF NOT EXISTS public.user_area_snapshots (
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    life_domain TEXT NOT NULL,
+    snapshot_text TEXT NOT NULL,
+    entry_count INT DEFAULT 1 NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+    PRIMARY KEY (user_id, life_domain)
+);
+
+-- 10. User AI State (Tracking AI Insight usage)
 CREATE TABLE IF NOT EXISTS public.user_ai_state (
     user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     insight_ever_requested BOOLEAN DEFAULT false NOT NULL,
