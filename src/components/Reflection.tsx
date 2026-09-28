@@ -442,8 +442,8 @@ export const Reflection: React.FC<ReflectionProps> = ({ questions, onBurnAll, on
 
                   {insightLoading ? (
                     <div className="py-10 flex flex-col items-center justify-center space-y-4">
-                      <div className="w-8 h-8 rounded-full border-2 border-cyan-500/30 border-t-cyan-400 animate-spin" />
-                      <span className="text-xs font-mono text-cyan-300/80 animate-pulse">
+                      <div className="w-8 h-8 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+                      <span className="text-xs font-mono text-zinc-100 tracking-wider animate-pulse">
                         Analyzing session extractions & gap patterns...
                       </span>
                     </div>
