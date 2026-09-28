@@ -84,6 +84,41 @@ export async function POST(req: NextRequest) {
       console.warn('Failed to update vector embedding with answer summary:', e);
     }
 
+    // 7. Update per-life-area snapshot in user_area_snapshots table
+    const lifeDomain = questionExtraction.life_domain || 'other';
+    try {
+      const { data: domainRows } = await supabase
+        .from('question_analysis')
+        .select('id, question_id, analysis_json')
+        .eq('user_id', effectiveUserId);
+
+      const domainFiltered = (domainRows || []).filter((r: any) => {
+        const dom = r.analysis_json?.life_domain || r.analysis_json?.situation?.life_domain;
+        return dom === lifeDomain || (!dom && lifeDomain === 'other');
+      });
+
+      const entryCount = domainFiltered.length || 1;
+      const snapshotText = `${lifeDomain} (${entryCount} entries): Stated concern "${statedConcern}". Advised: "${answerAnalysis.answer_summary}". Deltas: agency ${deltas.agency_delta ?? 'N/A'}, ownership ${deltas.ownership_delta ?? 'N/A'}, action ${deltas.action_delta ?? 'N/A'}.`;
+
+      await supabase
+        .from('user_area_snapshots')
+        .upsert(
+          [
+            {
+              user_id: effectiveUserId,
+              life_domain: lifeDomain,
+              snapshot_text: snapshotText,
+              entry_count: entryCount,
+              updated_at: new Date().toISOString(),
+            },
+          ],
+          { onConflict: 'user_id, life_domain' }
+        );
+      console.log(`✅ [AREA SNAPSHOT UPDATED] ${lifeDomain}: "${snapshotText}"`);
+    } catch (e) {
+      console.warn('Failed to update user_area_snapshots:', e);
+    }
+
     return NextResponse.json({
       success: true,
       answerAnalysis,

@@ -121,92 +121,43 @@ const EXTRACTION_SYSTEM_INSTRUCTION = `You are a precise clinical extraction eng
 Analyze the user's raw thought and extract psychological indicators strictly matching this JSON schema structure:
 
 {
-  "emotional_state": {
-    "primary_emotions": [
-      { "emotion": "fear|shame|anger|sadness|guilt|confusion|hope|disgust|envy", "intensity": 0.8, "confidence": 0.9 }
-    ],
-    "overall_intensity": 0.75,
-    "valence": -0.6,
-    "vulnerability": 0.8
-  },
-  "situation": {
-    "life_domain": "career|relationship|self-worth|family|health|money|identity|other",
-    "sub_domain": "short text or null",
-    "time_orientation": "past|present|future",
-    "uncertainty_level": 0.7,
-    "perceived_threat": 0.6
-  },
-  "trigger": {
-    "trigger_type": "social_comparison|rejection_or_criticism|conflict|failure_or_mistake|uncertainty|financial_pressure|health_concern|memory_or_anniversary|isolation|other|null",
-    "trigger_source": "self|specific_person|social_media|past_event|anticipated_event|environment|null",
-    "trigger_description": "short text or null",
-    "confidence": 0.8
-  },
-  "concern": {
-    "stated_concern": "short paraphrase of raw thought",
-    "feared_outcome": "short text or null",
-    "feared_consequence": "short text or null",
-    "underlying_need": "security|acceptance|competence|autonomy|connection|fairness|null",
-    "core_concern": "short synthesis"
-  },
-  "cognitive_state": {
-    "certainty": 0.3,
-    "perceived_control": 0.4,
-    "locus_of_control": "internal|external|mixed|null",
-    "self_efficacy": 0.5,
-    "rumination": 0.8,
-    "catastrophizing": 0.6,
-    "cognitive_distortions": ["catastrophizing", "mind-reading", "all-or-nothing"],
-    "distortion_confidence": 0.8
-  },
-  "behavioral_state": {
-    "action_orientation": "action-taken|intention-stated|rumination-only|null",
-    "avoidance": 0.8,
-    "reassurance_seeking": 0.2,
-    "coping_response": "problem-focused|emotion-focused|avoidant|none_identified",
-    "resolution_status": "unresolved|in-progress|resolved"
-  },
-  "self_relation": {
-    "self_criticism": 0.7,
-    "self_blame": 0.6,
-    "self_worth_threat": 0.8,
-    "comparison": 0.5,
-    "self_talk_valence": "compassionate|neutral|critical"
-  },
-  "gap_indicators": {
-    "insight_vs_action_gap": 0.85,
-    "responsibility_gap": 0.3,
-    "stated_vs_demonstrated_agency": "matches|mismatch|null",
-    "victim_framing_flag": false,
-    "notes": "short synthesis or null"
-  },
+  "life_domain": "career|relationship|self-worth|family|health|money|identity|other",
+  "stated_concern": "short paraphrase of raw thought",
+  "core_concern": "short synthesis or null",
+  "primary_emotion": "fear|shame|anger|sadness|guilt|confusion|hope|disgust|envy",
+  "emotion_intensity": 0.8,
+  "trigger_type": "social_comparison|rejection_or_criticism|conflict|failure_or_mistake|uncertainty|financial_pressure|health_concern|memory_or_anniversary|isolation|other|null",
+  "trigger_description": "short text naming actual cause, or null",
+  "trigger_confidence": 0.8,
+  "cognitive_distortions": ["catastrophizing", "all-or-nothing", "mind-reading", "overgeneralization", "personalization", "discounting-positive"],
+  "agency_score": 4,
+  "locus_of_control": "internal|mixed|external|null",
+  "action_orientation": "action-taken|intention-stated|rumination-only|null",
+  "ownership_score": 5,
+  "overall_intensity": 0.7,
+  "self_talk_valence": "compassionate|neutral|critical|null",
+  "resolution_status": "unresolved|in-progress|resolved|null",
+  "coping_response": "problem-focused|emotion-focused|avoidant|null",
   "clinical_pattern_flags": {
     "repetitive_intrusive_thought": false,
     "compulsive_behavior_described": false,
     "ego_dystonic_marker": false,
     "reassurance_seeking_pattern": false,
     "flag_confidence": 0.9,
-    "flag_basis": null,
     "recommend_professional_review": false
   },
-  "expression": {
-    "rawness": 0.8,
-    "directness": 0.85,
-    "urgency": 0.7,
-    "formality": 0.1
-  },
-  "recurrence": {
-    "signal": "new|echoes_past_entry|repeated_unresolved",
-    "matched_entry_ids": []
-  },
-  "evidence": {
-    "explicit": ["direct quotes from original input"],
-    "inferred": ["reasoned conclusions"]
-  },
+  "hopelessness_or_self_harm_language": false,
+  "evidence_explicit": ["direct paraphrases of what was actually written"],
   "overall_confidence": 0.85
 }
 
-DO NOT invent facts; use null or 0 if evidence is lacking. Output ONLY the valid JSON object.`;
+CRITICAL PROMPT RULES:
+1. Return null for any field with no direct or strongly implied evidence. Never fill a 'safe middle' number as a substitute for null.
+2. Do not infer blame, responsibility, or traits the text does not support. A physical symptom is not evidence of locus of control or ownership.
+3. ownership_score and locus_of_control must be null for physiological or acute-distress reports with no decision or responsibility content.
+4. cognitive_distortions list and distortion scores must agree.
+5. trigger_description must name an actual cause, not restate the feeling. If no cause is stated, trigger fields are null.
+6. Output ONLY the valid JSON object.`;
 
 const ANSWER_EXTRACTION_SYSTEM_INSTRUCTION = `You are the Answer Analysis Engine for Self-Haul. The user was shown a third-person narration of their own doubt, and asked to respond as if advising a stranger. You will extract a small, comparable set of signals from their answer, using the ORIGINAL QUESTION's extracted data as context so your scores are calibrated against the same situation.
 
@@ -253,6 +204,8 @@ Now extract from the answer above.`;
 
   const EXTRACTION_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest'];
 
+  const numOrNull = (val: any): number | null => (typeof val === 'number' && !isNaN(val) ? val : null);
+
   for (const modelName of EXTRACTION_MODELS) {
     try {
       const response = await getAi().models.generateContent({
@@ -269,16 +222,16 @@ Now extract from the answer above.`;
       const parsed = JSON.parse(text);
       if (parsed && typeof parsed === 'object') {
         return {
-          agency_score: typeof parsed.agency_score === 'number' ? parsed.agency_score : null,
-          locus_of_control: typeof parsed.locus_of_control === 'number' ? parsed.locus_of_control : null,
-          action_orientation: typeof parsed.action_orientation === 'number' ? parsed.action_orientation : 0,
-          action_specificity: typeof parsed.action_specificity === 'number' ? parsed.action_specificity : 0,
-          ownership_score: typeof parsed.ownership_score === 'number' ? parsed.ownership_score : null,
-          emotional_intensity: typeof parsed.emotional_intensity === 'number' ? parsed.emotional_intensity : 5,
-          self_talk_valence: typeof parsed.self_talk_valence === 'number' ? parsed.self_talk_valence : 0,
-          resolution_status: typeof parsed.resolution_status === 'number' ? parsed.resolution_status : 0,
-          coping_orientation: typeof parsed.coping_orientation === 'number' ? parsed.coping_orientation : 0,
-          engaged_with_prompt: parsed.engaged_with_prompt !== false,
+          agency_score: numOrNull(parsed.agency_score),
+          locus_of_control: numOrNull(parsed.locus_of_control),
+          action_orientation: numOrNull(parsed.action_orientation),
+          action_specificity: numOrNull(parsed.action_specificity),
+          ownership_score: numOrNull(parsed.ownership_score),
+          emotional_intensity: numOrNull(parsed.emotional_intensity),
+          self_talk_valence: numOrNull(parsed.self_talk_valence),
+          resolution_status: numOrNull(parsed.resolution_status),
+          coping_orientation: numOrNull(parsed.coping_orientation),
+          engaged_with_prompt: typeof parsed.engaged_with_prompt === 'boolean' ? parsed.engaged_with_prompt : true,
           answer_summary: parsed.answer_summary || answerRawText,
           evidence_explicit: Array.isArray(parsed.evidence?.explicit)
             ? parsed.evidence.explicit
@@ -291,15 +244,15 @@ Now extract from the answer above.`;
   }
 
   return {
-    agency_score: 5,
-    locus_of_control: 0,
-    action_orientation: 1,
-    action_specificity: 1,
-    ownership_score: 5,
-    emotional_intensity: 5,
-    self_talk_valence: 0,
-    resolution_status: 1,
-    coping_orientation: 0,
+    agency_score: null,
+    locus_of_control: null,
+    action_orientation: null,
+    action_specificity: null,
+    ownership_score: null,
+    emotional_intensity: null,
+    self_talk_valence: null,
+    resolution_status: null,
+    coping_orientation: null,
     engaged_with_prompt: true,
     answer_summary: answerRawText,
     evidence_explicit: [answerRawText],

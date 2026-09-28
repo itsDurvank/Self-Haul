@@ -124,13 +124,41 @@ export async function POST(req: NextRequest) {
         if (rpcErr) {
           console.warn('[RAG INSIGHT RETRIEVAL] RPC error:', rpcErr.message);
         } else if (Array.isArray(rpcMatches)) {
-          vectorMatches = rpcMatches.map((m: any) => m.analysis_json).filter(Boolean);
+          const matchQuestionIds = rpcMatches.map((m: any) => m.question_id).filter(Boolean);
+          const pastAnswersMap: Record<string, { raw_text?: string; answer_summary?: string }> = {};
+
+          if (matchQuestionIds.length > 0) {
+            const { data: pastAnsData } = await supabase
+              .from('answers')
+              .select('question_id, raw_text, answer_analysis')
+              .in('question_id', matchQuestionIds);
+
+            if (pastAnsData) {
+              pastAnsData.forEach((pa: any) => {
+                pastAnswersMap[pa.question_id] = {
+                  raw_text: pa.raw_text,
+                  answer_summary: pa.answer_analysis?.answer_summary,
+                };
+              });
+            }
+          }
+
+          vectorMatches = rpcMatches.map((m: any) => {
+            const baseJson = m.analysis_json || {};
+            const paObj = pastAnswersMap[m.question_id];
+            return {
+              ...baseJson,
+              past_answer_advice: paObj?.raw_text || paObj?.answer_summary || '[No past advice recorded]',
+            };
+          });
+
           console.log(`\n🧠 [RAG INSIGHT RETRIEVAL] Query concern: "${topConcern}"`);
-          console.log(`   Fetched ${vectorMatches.length} semantically relevant past matches:`);
+          console.log(`   Fetched ${vectorMatches.length} semantically relevant past matches with advice:`);
           rpcMatches.forEach((m: any, idx: number) => {
             const raw = m.analysis_json?.input?.raw_text || m.analysis_json?.stated_concern || m.analysis_json?.concern?.stated_concern;
             const sim = (m.similarity * 100).toFixed(1);
-            console.log(`   Match #${idx + 1} [${sim}% match]: "${raw}"`);
+            const paObj = pastAnswersMap[m.question_id];
+            console.log(`   Match #${idx + 1} [${sim}% match]: "${raw}" | Past Advice: "${paObj?.answer_summary || paObj?.raw_text || 'None'}"`);
           });
           console.log('\n');
         }
