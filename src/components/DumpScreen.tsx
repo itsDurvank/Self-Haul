@@ -118,10 +118,14 @@ export const DumpScreen: React.FC<DumpScreenProps> = ({
       textareaRef.current.style.height = 'auto';
     }
 
+    // Ensure timeout accommodates the full animation duration for all characters
+    const totalChars = trimmed.length;
+    const totalDurationMs = Math.max(1200, Math.min(2000, Math.floor(totalChars * 8 + 1050)));
+
     animTimeoutRef.current = setTimeout(() => {
       setIsAbsorbing(false);
       setSunkText(null);
-    }, 1200);
+    }, totalDurationMs);
   };
 
   return (
@@ -362,7 +366,7 @@ export const DumpScreen: React.FC<DumpScreenProps> = ({
                   }}
                   transition={{
                     duration: 0.95,
-                    delay: p.index * 0.014,
+                    delay: p.index * 0.008,
                     ease: [0.25, 0.1, 0.25, 1],
                   }}
                   className="absolute inline-block font-sans font-bold text-base sm:text-xl text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.7)] drop-shadow-[0_0_18px_rgba(251,191,36,0.4)] drop-shadow-[0_0_25px_rgba(56,189,248,0.25)] tracking-wide"

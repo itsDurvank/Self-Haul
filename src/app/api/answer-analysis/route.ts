@@ -46,8 +46,8 @@ export async function POST(req: NextRequest) {
     // 4. Compute Question vs Answer Deltas in application code
     const deltas = computeDeltas(questionExtraction, answerAnalysis);
 
-    // 5. Insert / Upsert Answer row in answers table
-    const { data: answerRow, error: ansErr } = await supabase
+    // 5. Insert / Upsert Answer row in answers table (with graceful fallback if schema lacks JSONB columns)
+    let { data: answerRow, error: ansErr } = await supabase
       .from('answers')
       .upsert(
         [
@@ -66,6 +66,27 @@ export async function POST(req: NextRequest) {
 
     if (ansErr) {
       console.warn('Upsert answer analysis warning:', ansErr.message);
+      if (ansErr.message?.includes('column') || ansErr.message?.includes('schema cache')) {
+        const fallback = await supabase
+          .from('answers')
+          .upsert(
+            [
+              {
+                question_id: questionId,
+                user_id: effectiveUserId,
+                raw_text: answerText,
+              },
+            ],
+            { onConflict: 'question_id' }
+          )
+          .select('id')
+          .maybeSingle();
+        if (fallback.error) {
+          console.warn('Fallback answer upsert error:', fallback.error.message);
+        } else {
+          console.log(`✅ Saved base answer record for question ${questionId}`);
+        }
+      }
     }
 
     // 6. Update vector embedding for question_analysis combining concern + answer_summary

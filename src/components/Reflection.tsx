@@ -6,8 +6,14 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Question } from '@/types/selfhaul';
 import { formatAsText, formatAsMarkdown, downloadFile } from '@/lib/export';
 import { soundEngine } from '@/lib/audio';
-import { Download, Copy, Flame, RotateCcw, Check, FileText, Sparkles, ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
+import { Download, Copy, Flame, RotateCcw, Check, FileText, Sparkles, ArrowLeft, ChevronDown, ChevronUp, Send, MessageSquare } from 'lucide-react';
 import { LiquidGlass } from '@/components/ui/LiquidGlass';
+
+interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+}
 
 interface ReflectionProps {
   questions: Question[];
@@ -23,6 +29,18 @@ export const Reflection: React.FC<ReflectionProps> = ({ questions, onBurnAll, on
   const [insightModalOpen, setInsightModalOpen] = useState(false);
   const [insightLoading, setInsightLoading] = useState(false);
   const [insightResult, setInsightResult] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [isSendingChat, setIsSendingChat] = useState(false);
+  const chatScrollRef = React.useRef<HTMLDivElement | null>(null);
+
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      if (chatScrollRef.current) {
+        chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+      }
+    }, 50);
+  };
 
   const handleRequestInsight = async () => {
     soundEngine.playButtonClickSound();
@@ -40,6 +58,66 @@ export const Reflection: React.FC<ReflectionProps> = ({ questions, onBurnAll, on
       setInsightResult('Unable to generate AI Insight.');
     } finally {
       setInsightLoading(false);
+    }
+  };
+
+  const handleSendChatMessage = async (presetText?: string) => {
+    const textToSend = (presetText || chatInput).trim();
+    if (!textToSend || isSendingChat) return;
+
+    soundEngine.playEnterKeySound();
+    setChatInput('');
+
+    const userMsg: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: textToSend,
+    };
+
+    const newHistory = [...chatMessages, userMsg];
+    setChatMessages(newHistory);
+    setIsSendingChat(true);
+    scrollToBottom();
+
+    try {
+      const questionIds = questions.map((q) => q.id).filter(Boolean);
+      const res = await fetch('/api/insight/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: newHistory.map((m) => ({ role: m.role, content: m.content })),
+          questionIds,
+          initialInsight: insightResult,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Chat request failed');
+      const data = await res.json();
+
+      if (data.reply) {
+        setChatMessages((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: data.reply,
+          },
+        ]);
+        soundEngine.playAstralChime();
+        scrollToBottom();
+      }
+    } catch (err) {
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: 'Unable to reach the Socratic Inquirer right now. Please try again in a moment.',
+        },
+      ]);
+    } finally {
+      setIsSendingChat(false);
+      scrollToBottom();
     }
   };
 
@@ -395,22 +473,22 @@ export const Reflection: React.FC<ReflectionProps> = ({ questions, onBurnAll, on
         </LiquidGlass>
       </motion.div>
 
-      {/* AI Insight On-Demand Modal Overlay */}
+      {/* AI Insight On-Demand Modal Overlay & Socratic Dialogue */}
       <AnimatePresence>
         {insightModalOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/85 backdrop-blur-2xl flex items-center justify-center p-4 sm:p-6"
+            className="fixed inset-0 z-50 bg-black/85 backdrop-blur-2xl flex items-center justify-center p-3 sm:p-6"
             onClick={() => setInsightModalOpen(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              initial={{ scale: 0.92, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              exit={{ scale: 0.92, opacity: 0, y: 20 }}
               transition={{ duration: 0.3 }}
-              className="w-full max-w-lg"
+              className="w-full max-w-2xl max-h-[90dvh] flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               <LiquidGlass
@@ -419,42 +497,119 @@ export const Reflection: React.FC<ReflectionProps> = ({ questions, onBurnAll, on
                 borderRadius={28}
                 displacementScale={35}
                 elasticity={0.2}
-                padding="32px 28px"
+                padding="24px 24px"
                 style={{
                   background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%)',
                   boxShadow: 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.3), 0 35px 90px rgba(0, 0, 0, 0.95)',
                 }}
-                className="w-full border border-cyan-500/30 shadow-2xl relative"
+                className="w-full border border-cyan-500/30 shadow-2xl relative flex flex-col max-h-[90dvh]"
               >
-                <div className="flex flex-col space-y-4 text-left">
-                  <div className="flex items-center justify-between border-b border-white/15 pb-3">
-                    <div className="flex items-center gap-2 text-xs tracking-[0.3em] uppercase text-zinc-300 font-mono bg-black/60 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/10 shadow-lg">
-                      <Sparkles className="w-3.5 h-3.5 text-zinc-200" />
-                      <span>AI INSIGHT</span>
+                <div className="flex flex-col h-full space-y-4 text-left overflow-hidden">
+                  {/* Modal Header */}
+                  <div className="flex items-center justify-between border-b border-white/15 pb-3 shrink-0">
+                    <div className="flex items-center gap-2 text-xs tracking-[0.25em] uppercase text-zinc-200 font-mono bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10 shadow-lg">
+                      <Sparkles className="w-3.5 h-3.5 text-cyan-300" />
+                      <span>AI INSIGHT & SOCRATIC MIRROR</span>
                     </div>
                     <button
                       onClick={() => setInsightModalOpen(false)}
-                      className="text-xs font-mono text-zinc-400 hover:text-white transition-colors cursor-pointer px-2.5 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10"
+                      className="text-xs font-mono text-zinc-400 hover:text-white transition-colors cursor-pointer px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10"
                     >
                       Close ✕
                     </button>
                   </div>
 
                   {insightLoading ? (
-                    <div className="py-10 flex flex-col items-center justify-center space-y-4">
-                      <div className="w-8 h-8 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+                    <div className="py-16 flex flex-col items-center justify-center space-y-4">
+                      <div className="w-9 h-9 rounded-full border-2 border-white/20 border-t-white animate-spin" />
                       <span className="text-xs font-mono text-zinc-100 tracking-wider animate-pulse">
-                        Analyzing session extractions & gap patterns...
+                        Analyzing longitudinal vector patterns & gap dynamics...
                       </span>
                     </div>
                   ) : (
-                    <div className="text-sm sm:text-base font-sans text-zinc-200 leading-relaxed space-y-3 whitespace-pre-wrap">
-                      {insightResult}
-                    </div>
+                    <>
+                      {/* Scrollable Chat & Diagnosis Area */}
+                      <div
+                        ref={chatScrollRef}
+                        className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar max-h-[58dvh] sm:max-h-[62dvh]"
+                      >
+                        {/* Initial Diagnostic Insight Box */}
+                        <div className="p-4 sm:p-5 rounded-2xl bg-black/45 border border-cyan-500/25 shadow-inner space-y-2">
+                          <div className="flex items-center gap-2 text-[10px] font-mono tracking-widest text-cyan-300 uppercase font-semibold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                            <span>SESSION DIAGNOSTIC GAP ANALYSIS</span>
+                          </div>
+                          <div className="text-sm sm:text-base font-sans text-zinc-100 leading-relaxed whitespace-pre-wrap">
+                            {insightResult}
+                          </div>
+                        </div>
+
+                        {/* Message Stream */}
+                        <div className="space-y-3 pt-1">
+                          {chatMessages.map((msg) => (
+                            <div
+                              key={msg.id}
+                              className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
+                            >
+                              <div className="text-[10px] font-mono text-zinc-400 mb-1 px-1">
+                                {msg.role === 'user' ? 'YOU' : 'SOCRATIC INQUIRER'}
+                              </div>
+                              <div
+                                className={`p-3.5 sm:p-4 rounded-2xl max-w-[88%] text-sm font-sans leading-relaxed ${
+                                  msg.role === 'user'
+                                    ? 'bg-zinc-800/90 text-white border border-white/20 shadow-md'
+                                    : 'bg-black/60 text-zinc-100 border-l-2 border-l-cyan-400 border border-white/10 shadow-lg whitespace-pre-wrap'
+                                }`}
+                              >
+                                {msg.content}
+                              </div>
+                            </div>
+                          ))}
+
+                          {isSendingChat && (
+                            <div className="flex flex-col items-start space-y-1">
+                              <span className="text-[10px] font-mono text-zinc-400 px-1">SOCRATIC INQUIRER</span>
+                              <div className="p-3.5 rounded-2xl bg-black/60 border border-white/10 flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full border-2 border-cyan-400/30 border-t-cyan-400 animate-spin" />
+                                <span className="text-xs font-mono text-zinc-300 animate-pulse">
+                                  Consulting vector memory & synthesizing...
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Bottom Chat Input Bar */}
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          handleSendChatMessage();
+                        }}
+                        className="pt-2 border-t border-white/10 shrink-0 flex items-center gap-2"
+                      >
+                        <input
+                          type="text"
+                          value={chatInput}
+                          onChange={(e) => setChatInput(e.target.value)}
+                          placeholder="Reply, challenge, or ask the Socratic mirror..."
+                          disabled={isSendingChat}
+                          className="flex-1 px-4 py-2.5 rounded-xl bg-black/50 border border-white/15 focus:border-cyan-400/60 text-white placeholder-zinc-400 text-sm font-sans focus:outline-none transition-colors"
+                        />
+                        <button
+                          type="submit"
+                          disabled={!chatInput.trim() || isSendingChat}
+                          className="p-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-500/40 text-cyan-200 hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center shrink-0"
+                          title="Send message"
+                        >
+                          <Send className="w-4 h-4" />
+                        </button>
+                      </form>
+                    </>
                   )}
 
-                  <div className="pt-2 text-[11px] font-mono text-zinc-400 text-center border-t border-white/10">
-                    Generated on-demand • Private memory palace context
+                  <div className="text-[10px] font-mono text-zinc-400 text-center shrink-0">
+                    Context calibrated across your longitudinal vector memory
                   </div>
                 </div>
               </LiquidGlass>

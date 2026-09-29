@@ -43,6 +43,19 @@
       created_at TIMESTAMPTZ DEFAULT now() NOT NULL
   );
 
+  -- Migration safeguard: Ensure columns and constraint exist even if table pre-existed
+  ALTER TABLE public.answers ADD COLUMN IF NOT EXISTS answer_analysis JSONB;
+  ALTER TABLE public.answers ADD COLUMN IF NOT EXISTS deltas JSONB;
+
+  DO $$ 
+  BEGIN 
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_constraint WHERE conname = 'answers_question_id_key'
+    ) THEN 
+      ALTER TABLE public.answers ADD CONSTRAINT answers_question_id_key UNIQUE (question_id);
+    END IF; 
+  END $$;
+
   -- 5. Question Analysis (Extracted JSON & pgvector Embeddings)
   -- Note: vector(768) matches Gemini text-embedding-004 dimension
   CREATE TABLE IF NOT EXISTS public.question_analysis (

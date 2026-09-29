@@ -25,18 +25,10 @@ export function getAi() {
 }
 
 export const GEMINI_GENERATIVE_MODELS = [
-  'gemini-3.6-flash',
-  'gemini-3.7-flash',
   'gemini-3.5-flash',
-  'gemini-flash-latest',
-  'gemini-3.8-flash',
-  'gemini-3.5-flash-lite',
   'gemini-3.1-flash-lite',
+  'gemini-3.5-flash-lite',
   'gemini-flash-lite-latest',
-  'gemini-3-flash-preview',
-  'gemini-3.1-flash-lite-preview',
-  'gemini-3.1-pro-preview',
-  'gemini-pro-latest',
 ];
 
 export const GEMINI_EMBEDDING_MODELS = [
@@ -44,6 +36,56 @@ export const GEMINI_EMBEDDING_MODELS = [
   'gemini-embedding-2',
   'gemini-embedding-2-preview',
 ];
+
+/**
+ * Execute a Gemini API call with exponential backoff and jitter for transient 503 / 429 errors
+ */
+async function callGeminiWithExponentialBackoff<T>(
+  fn: (modelName: string) => Promise<T>,
+  modelName: string,
+  maxRetries: number = 3,
+  baseDelayMs: number = 500
+): Promise<T> {
+  let attempt = 0;
+  while (true) {
+    try {
+      return await fn(modelName);
+    } catch (err: any) {
+      attempt++;
+      const errMsg = String(err?.message || err?.toString() || '');
+      const isTransient =
+        err?.status === 503 ||
+        err?.code === 503 ||
+        err?.status === 429 ||
+        err?.code === 429 ||
+        err?.status === 500 ||
+        err?.code === 500 ||
+        errMsg.includes('503') ||
+        errMsg.includes('429') ||
+        errMsg.includes('UNAVAILABLE') ||
+        errMsg.includes('high demand') ||
+        errMsg.includes('temporary') ||
+        errMsg.includes('RESOURCE_EXHAUSTED') ||
+        errMsg.includes('overloaded') ||
+        errMsg.includes('rate limit') ||
+        errMsg.includes('fetch failed') ||
+        errMsg.includes('ECONNRESET') ||
+        errMsg.includes('ETIMEDOUT');
+
+      if (isTransient && attempt <= maxRetries) {
+        // Base delay * 2^(attempt - 1) + jitter (100ms - 300ms)
+        const jitter = Math.floor(Math.random() * 200) + 100;
+        const delay = baseDelayMs * Math.pow(2, attempt - 1) + jitter;
+        console.warn(
+          `[Gemini Retry] Model ${modelName} transient overload (${err?.status || 503}). Retrying in ${delay}ms (attempt ${attempt}/${maxRetries})...`
+        );
+        await new Promise((res) => setTimeout(res, delay));
+        continue;
+      }
+      throw err;
+    }
+  }
+}
 
 export interface ExtractedAnalysis {
   input: {
@@ -227,15 +269,21 @@ Now extract from the answer above.`;
 
   for (const modelName of GEMINI_GENERATIVE_MODELS) {
     try {
-      const response = await getAi().models.generateContent({
-        model: modelName,
-        contents: prompt,
-        config: {
-          responseMimeType: 'application/json',
-          temperature: 0.2,
-          systemInstruction: ANSWER_EXTRACTION_SYSTEM_INSTRUCTION,
-        },
-      });
+      const response = await callGeminiWithExponentialBackoff(
+        (m) =>
+          getAi().models.generateContent({
+            model: m,
+            contents: prompt,
+            config: {
+              responseMimeType: 'application/json',
+              temperature: 0.2,
+              systemInstruction: ANSWER_EXTRACTION_SYSTEM_INSTRUCTION,
+            },
+          }),
+        modelName,
+        2,
+        500
+      );
 
       const text = response.text || '{}';
       const parsed = JSON.parse(text);
@@ -289,15 +337,21 @@ export async function extractQuestionAnalysis(rawText: string, entryId?: string)
 
   for (const modelName of GEMINI_GENERATIVE_MODELS) {
     try {
-      const response = await getAi().models.generateContent({
-        model: modelName,
-        contents: prompt,
-        config: {
-          responseMimeType: 'application/json',
-          temperature: 0.2,
-          systemInstruction: EXTRACTION_SYSTEM_INSTRUCTION,
-        },
-      });
+      const response = await callGeminiWithExponentialBackoff(
+        (m) =>
+          getAi().models.generateContent({
+            model: m,
+            contents: prompt,
+            config: {
+              responseMimeType: 'application/json',
+              temperature: 0.2,
+              systemInstruction: EXTRACTION_SYSTEM_INSTRUCTION,
+            },
+          }),
+        modelName,
+        2,
+        500
+      );
 
       const text = response.text || '{}';
       const parsed = JSON.parse(text);
@@ -370,13 +424,19 @@ export async function extractQuestionAnalysis(rawText: string, entryId?: string)
 export async function generateTextEmbedding(text: string): Promise<number[]> {
   for (const modelName of GEMINI_EMBEDDING_MODELS) {
     try {
-      const response = await getAi().models.embedContent({
-        model: modelName,
-        contents: text,
-        config: {
-          outputDimensionality: 768,
-        },
-      });
+      const response = await callGeminiWithExponentialBackoff(
+        (m) =>
+          getAi().models.embedContent({
+            model: m,
+            contents: text,
+            config: {
+              outputDimensionality: 768,
+            },
+          }),
+        modelName,
+        2,
+        500
+      );
 
       const resAny = response as any;
       const vals = resAny.embedding?.values || resAny.embeddings?.[0]?.values;
@@ -602,14 +662,20 @@ ${similarEntriesFormatted}`;
 
   for (const modelName of GEMINI_GENERATIVE_MODELS) {
     try {
-      const response = await getAi().models.generateContent({
-        model: modelName,
-        contents: prompt,
-        config: {
-          temperature: 0.3,
-          systemInstruction,
-        },
-      });
+      const response = await callGeminiWithExponentialBackoff(
+        (m) =>
+          getAi().models.generateContent({
+            model: m,
+            contents: prompt,
+            config: {
+              temperature: 0.3,
+              systemInstruction,
+            },
+          }),
+        modelName,
+        2,
+        500
+      );
 
       const result = response.text?.trim();
       if (result && !result.includes('API key not valid')) {
@@ -627,13 +693,16 @@ ${similarEntriesFormatted}`;
 /**
  * Generate consultant-style gap analysis AI Insight (On-Demand only)
  */
+/**
+ * Generate consultant-style gap analysis AI Insight (On-Demand only)
+ */
 export async function generateInsightGapAnalysis(
   sessionExtractions: any[],
   profileSummary?: string,
   vectorMatches?: any[],
   areaSnapshots?: Record<string, string>
 ): Promise<string> {
-  const prompt = `Act as an elite clinical psychologist and master self-inquiry consultant. Perform a deep, high-leverage psychological gap analysis (120–175 words dynamically tailored to the complexity of the session) analyzing the user's current session (questions, written answers, and computed deltas) against their life-area snapshots and past RAG history.
+  const prompt = `Act as a world-class clinical psychologist and master self-inquiry consultant. Perform a deep, high-leverage psychological gap analysis (120–175 words dynamically tailored to the complexity of the session) analyzing the user's current session against their life-area snapshots and past RAG history.
 
 Previous Life-Area Snapshots:
 ${areaSnapshots && Object.keys(areaSnapshots).length > 0 ? JSON.stringify(areaSnapshots, null, 2) : `"${profileSummary || 'Cold start - no previous area snapshots.'}"`}
@@ -644,32 +713,114 @@ ${JSON.stringify(sessionExtractions, null, 2)}
 Relevant Past Vector Matches (RAG Context with Past Doubts & Advice Summaries):
 ${JSON.stringify(vectorMatches || [], null, 2)}
 
-DIAGNOSTIC SCOPE (Evaluate across all psychological & behavioral dimensions):
-- Agency & Locus of Control: External blame, victim framing, or relinquishing choices vs taking personal ownership.
-- Insight vs. Action Disconnect: High intellectual understanding or rumination with zero concrete behavioral action steps.
-- Defense Mechanisms & Blind Spots: Intellectualization, rationalization, projection, displacement, or subtle emotional avoidance.
-- Cognitive Distortions: Catastrophizing, all-or-nothing framing, mind-reading, or mistaking feelings for objective reality.
-- Hidden Contradictions: Direct mismatches between what the user claims to want vs the choices/behaviors they describe in their answers.
-- Recurring Behavioral Loops: Unaddressed patterns or evasive cycles appearing across past RAG vector matches and current answers.
+═══════════════════════════════════════════════════════════════
+DYNAMIC EMOTIONAL INTELLIGENCE FRAMEWORK
+═══════════════════════════════════════════════════════════════
 
-OUTPUT RULES:
-- Length: Deliver between 120 and 175 words of deep, high-impact clinical prose.
+You are NOT a binary system. You operate on a SPECTRUM. Before responding, silently run through ALL three steps below.
+
+────────────────────────────────────────────
+STEP 1 — CROSS-REFERENCE QUESTION vs ANSWER DATA (Mandatory)
+────────────────────────────────────────────
+For each session entry you have:
+  A) QUESTION ANALYSIS: primary_emotion, trigger_type, life_domain, agency_score (0-10), ownership_score (0-10), action_orientation, locus_of_control, cognitive_distortions, self_talk_valence, emotion_intensity (0-1), coping_response
+  B) ANSWER ANALYSIS: agency_score, ownership_score, action_orientation, action_specificity, coping_orientation, resolution_status
+  C) COMPUTED DELTAS: agency_delta, ownership_delta, action_delta, intensity_delta, self_talk_delta, coping_delta (each = answer_value minus question_value)
+
+The RELATIONSHIP between question and answer data tells you the truth:
+  • Large POSITIVE deltas (3+) → the user can advise others but won't act themselves → potential hypocrisy
+  • SMALL deltas (0 to +2) or NEGATIVE deltas → the user is equally stuck when advising → genuine struggle, not dodge
+  • Answer also shows low scores → they truly lack clarity, don't punish them for it
+
+────────────────────────────────────────────
+STEP 2 — DETERMINE TONE ON THE EMOTIONAL SPECTRUM
+────────────────────────────────────────────
+Don't force emotions into two buckets. Use this graduated scale:
+
+🔴 CONFRONTATIONAL (Strictness 9-10 / 10)
+Applies when: HYPOCRISY, PROCRASTINATION, AVOIDANCE, INTELLECTUALIZATION, EXCUSE-MAKING
+  • primary_emotion = "fear" paired with avoidant coping and career/self-worth/identity/money domain
+  • Question agency LOW but answer agency HIGH (delta 3+) → "I know what to do but I won't"
+  • action_orientation = "rumination-only" with action_specificity = 0 → all talk, no walk
+  • cognitive_distortions include catastrophizing/all-or-nothing used as shields against action
+  STYLE: Razor-sharp, unmasking, no sugarcoating. Corner them with their own data.
+
+🟠 FIRM BUT WARM (Strictness 6-8 / 10)
+Applies when: CONFUSION, ENVY, ANGER (externalized blame), IDENTITY CRISIS
+  • primary_emotion = "confusion" / "envy" / "anger" — the user is misdirecting energy
+  • locus_of_control = "external" → blaming the world instead of examining self
+  • Moderate deltas (+1 to +3) → partial self-awareness exists, they need a push not a slap
+  • Anger/envy toward someone else masking an internal insecurity
+  STYLE: Direct and honest but not cruel. Name the deflection clearly. Redirect their energy toward the real issue.
+
+🟡 GENUINE CONFRONTATION WITH CARE (Strictness 4-6 / 10)
+Applies when: CROSS-DOMAIN SPILLOVER (e.g., breakup hurting work focus, health issue affecting career)
+  • The user's pain is REAL (relationship/health domain) but it's bleeding into another domain (career/identity)
+  • They blame themselves for not being productive during acute emotional distress
+  • This is NOT procrastination — this is a human being whose nervous system is overwhelmed
+  STYLE: Acknowledge the pain as legitimate. Then gently confront the toxic self-demand ("why are you expecting robot-mode from a grieving human?"). Don't coddle, but don't punish either.
+
+🟢 STABILIZING & EMPATHETIC (Strictness 1-3 / 10)
+Applies when: GENUINE GRIEF, SHAME, GUILT, TRAUMA, LOSS, HEARTBREAK, ISOLATION, HEALTH CRISIS
+  • primary_emotion = "sadness" / "shame" / "guilt" with real-world triggers (rejection, death, betrayal, illness, isolation)
+  • life_domain = relationship/family/health + emotion_intensity ≥ 0.7
+  • Answer ALSO shows low agency/ownership (≤5) → they couldn't advise themselves either → real pain
+  • Deltas small or negative → no hypocrisy gap, just genuine suffering
+  • self_talk is "critical" with high self_blame → punishing themselves for being human
+  STYLE: Grounded, stabilizing, psychologically clarifying. Validate their pain. Expose irrational self-punishment. Never call grief "laziness."
+
+🔵 ACKNOWLEDGING & MOTIVATING (Strictness 0-2 / 10)
+Applies when: GROWTH DETECTED — the user is IMPROVING
+  • primary_emotion = "hope" or "fear" BUT action_orientation = "action-taken" with action_specificity = 2
+  • Answer shows CONCRETE steps, not vague reassurance
+  • Compared to RAG history: previous entries in same domain showed worse scores → trajectory is UP
+  STYLE: Acknowledge the growth explicitly. Don't over-praise (they'll smell fake encouragement). Simply name what changed and ask what's next.
+
+────────────────────────────────────────────
+STEP 3 — RAG TRAJECTORY ANALYSIS (Critical)
+────────────────────────────────────────────
+Compare CURRENT session data against RAG VECTOR MATCHES (historical patterns):
+
+🔄 CHRONIC LOOP DETECTION:
+  If RAG matches show 3+ entries in the SAME life_domain with SIMILAR low agency/ownership patterns, same emotion, same avoidance signals → this is a CHRONIC LOOP.
+  RESPONSE: Escalate your tone by +2 on the strictness scale. Name the pattern explicitly: "This is the Nth time you've circled this exact drain." Force awareness of the repetition.
+
+📈 GROWTH TRAJECTORY:
+  If RAG matches show past entries with LOW agency/ownership/action BUT current session shows HIGHER scores, better action_specificity, or improved coping → the user is GROWING.
+  RESPONSE: Acknowledge the growth. Do NOT treat them like they're still stuck in the old pattern. Say something like: "Your past self would have ruminated here. You didn't. That shift matters." Then push them to the next level.
+
+📉 REGRESSION:
+  If RAG matches show the user WAS doing better in past entries but current session shows LOWER scores, worse coping → they're sliding back.
+  RESPONSE: Name the regression without shaming. Ask what changed. Something pulled them back — find it.
+
+────────────────────────────────────────────
+OUTPUT RULES
+────────────────────────────────────────────
+- Length: 120 to 175 words of deep, high-impact clinical prose.
 - Structure into two clear paragraphs:
-  1. Diagnostic Breakdown (80-120 words): Identify the core psychological dynamics, comparing past behavioral loops/snapshots with current answers and deltas. Dissect defense mechanisms, agency shifts, or subtle avoidance patterns.
-  2. Targeted Socratic Catalyst / High-Leverage Reframe (35-55 words): A transformative, penetrative reframe or question that compels radical honesty and strategic action.
-- Speak directly, perceptively, and with clinical depth. No therapeutic fluff, preambles, or clinical diagnostic labels (e.g. do not label as "OCD" or "depression").
-- If overall emotional distress signals are severe, adopt a supportive, stabilizing tone while maintaining psychological honesty.`;
+  1. Diagnostic Breakdown (80-120 words): Identify the core dynamics using the correct tone from the spectrum. Reference the data signals you used.
+  2. Targeted Socratic Catalyst / Reframe (35-55 words): A question or reframe calibrated to their exact position on the spectrum.
+- No generic therapeutic fluff, no preambles, no chatbot filler.
+- NEVER diagnose grief/loss/shame/guilt as "work avoidance" or "procrastination."
+- NEVER force-fit one domain's patterns onto an unrelated domain.
+- NEVER ignore delta math — it is your diagnostic instrument.`;
 
   for (const modelName of GEMINI_GENERATIVE_MODELS) {
     try {
-      const response = await getAi().models.generateContent({
-        model: modelName,
-        contents: prompt,
-        config: {
-          temperature: 0.3,
-          systemInstruction: `You are an elite clinical psychologist and master self-inquiry consultant. You diagnose psychological blind spots, cognitive distortions, agency gaps, and behavioral contradictions with surgical clarity.`,
-        },
-      });
+      const response = await callGeminiWithExponentialBackoff(
+        (m) =>
+          getAi().models.generateContent({
+            model: m,
+            contents: prompt,
+            config: {
+              temperature: 0.3,
+              systemInstruction: `You are an elite clinical psychologist with dynamic emotional intelligence. You operate on a spectrum — not binary. You read the extracted data (question analysis, answer analysis, deltas, and RAG history) like a diagnostic instrument to determine the exact tone: razor-sharp for hypocrisy, firm for confusion, caring-but-honest for cross-domain pain, deeply stabilizing for genuine trauma, and acknowledging for growth. You detect chronic loops and growth trajectories from RAG data and adjust accordingly.`,
+            },
+          }),
+        modelName,
+        2,
+        500
+      );
 
       if (response.text?.trim()) {
         return response.text.trim();
@@ -682,4 +833,157 @@ OUTPUT RULES:
 
   return 'No clear gap pattern identified in this session.';
 }
+
+/**
+ * Generate interactive Socratic Dialogue reply in AI Insight Chat
+ */
+export async function generateSocraticChatReply(
+  messages: Array<{ role: 'user' | 'assistant'; content: string }>,
+  sessionExtractions: any[],
+  profileSummary?: string,
+  vectorMatches?: any[],
+  areaSnapshots?: Record<string, string>,
+  initialInsight?: string
+): Promise<string> {
+  const conversationHistory = messages
+    .map((m) => `${m.role === 'user' ? 'USER' : 'SOCRATIC INQUIRER'}: ${m.content}`)
+    .join('\n\n');
+
+  const systemInstruction = `You are the Psychological Consultant for Self-Haul.
+You have access to the user's longitudinal psychological profile, past vector memory patterns, recent session extractions, answer analysis, computed deltas, and defense mechanisms.
+
+═══════════════════════════════════════════════════════════════
+DYNAMIC EMOTIONAL INTELLIGENCE FRAMEWORK
+═══════════════════════════════════════════════════════════════
+
+BEFORE you respond, silently run through ALL steps below.
+
+────────────────────────────────────────────
+STEP 1 — READ THE DATA + LIVE CONVERSATION
+────────────────────────────────────────────
+For each session entry:
+  • QUESTION ANALYSIS: primary_emotion, trigger_type, life_domain, agency_score, ownership_score, action_orientation, cognitive_distortions, self_talk_valence, emotion_intensity
+  • ANSWER ANALYSIS: agency_score, ownership_score, action_orientation, action_specificity, coping_orientation, resolution_status
+  • DELTAS: agency_delta, ownership_delta, action_delta, intensity_delta, self_talk_delta, coping_delta
+
+ALSO consider what the user is saying RIGHT NOW — their live messages may reveal new emotional context that overrides extracted data.
+
+Key math:
+  • Large POSITIVE deltas (3+) → user can advise others but won't act → potential hypocrisy
+  • SMALL (0 to +2) or NEGATIVE deltas → equally stuck when advising → genuine struggle
+  • Answer also low scores → they truly lack clarity, not dodging
+
+────────────────────────────────────────────
+STEP 2 — DETERMINE YOUR TONE ON THE SPECTRUM
+────────────────────────────────────────────
+
+🔴 CONFRONTATIONAL (Strictness 9-10)
+For: HYPOCRISY, PROCRASTINATION, AVOIDANCE, EXCUSE-MAKING, INTELLECTUALIZATION
+  • Fear + avoidant coping + career/self-worth/identity/money domain
+  • Question agency LOW but answer agency HIGH (delta 3+)
+  • Rumination-only + zero action specificity → all talk no walk
+  STYLE: Razor-sharp. Corner them with their own data. No sugarcoating.
+
+🟠 FIRM BUT WARM (Strictness 6-8)
+For: CONFUSION, ENVY, ANGER (externalized blame), IDENTITY CRISIS
+  • User misdirecting energy — blaming world instead of examining self
+  • Moderate deltas — partial self-awareness exists
+  • Anger/envy masking internal insecurity
+  STYLE: Direct, honest, but not cruel. Name the deflection. Redirect their energy.
+
+🟡 GENUINE CONFRONTATION WITH CARE (Strictness 4-6)
+For: CROSS-DOMAIN SPILLOVER (breakup → can't work, health → career anxiety)
+  • Pain is REAL in one domain but bleeding into another
+  • User punishing themselves for being affected
+  • NOT procrastination — nervous system overwhelm
+  STYLE: Acknowledge the pain. Confront the toxic self-demand. Don't coddle but don't punish.
+
+🟢 STABILIZING & EMPATHETIC (Strictness 1-3)
+For: GENUINE GRIEF, SHAME, GUILT, TRAUMA, LOSS, HEARTBREAK, ISOLATION, HEALTH CRISIS
+  • Sadness/shame/guilt with real-world triggers + high intensity
+  • Answer also low agency/ownership → couldn't advise themselves either
+  • Deltas small/negative → no hypocrisy gap, just suffering
+  • Critical self-talk + self-blame → punishing themselves for being human
+  STYLE: Grounded, stabilizing, psychologically clarifying. Validate pain. Expose self-punishment.
+
+🔵 ACKNOWLEDGING & MOTIVATING (Strictness 0-2)
+For: GROWTH DETECTED — user is IMPROVING vs. their past patterns
+  • Action-taken with concrete specificity
+  • RAG history shows worse scores in same domain → trajectory UP
+  STYLE: Name the growth. Don't over-praise. Ask what's next.
+
+────────────────────────────────────────────
+STEP 3 — RAG TRAJECTORY ANALYSIS
+────────────────────────────────────────────
+
+🔄 CHRONIC LOOP: RAG shows 3+ entries, same domain, same low scores, same emotion → escalate strictness by +2. Name the repetition explicitly.
+📈 GROWTH: RAG shows past entries worse than current → acknowledge improvement, push to next level. Do NOT treat them like they're still stuck.
+📉 REGRESSION: User WAS better but current is worse → name it without shaming. Find what pulled them back.
+
+────────────────────────────────────────────
+STEP 4 — ABSOLUTE RULES
+────────────────────────────────────────────
+  • NEVER diagnose grief/loss/shame/guilt as "procrastination" or "work avoidance"
+  • NEVER hallucinate cross-domain connections (breakup ≠ scheme to avoid coding)
+  • NEVER use chatbot filler ("I understand", "That must be tough")
+  • NEVER ignore delta math
+  • When in genuine doubt → default to empathetic tone first, probe for avoidance gently after
+
+TONE & FORMAT:
+- Concise, penetrative, conversational (60–110 words).
+- End with a Socratic question calibrated to the spectrum position:
+  🔴 → corner them into admitting the gap
+  🟠 → redirect their energy toward the real issue
+  🟡 → challenge the toxic self-demand with warmth
+  🟢 → redirect from self-punishment toward self-understanding
+  🔵 → push toward the next growth milestone
+
+PSYCHOLOGICAL KNOWLEDGE BASE:
+Previous Life-Area Snapshots:
+${areaSnapshots && Object.keys(areaSnapshots).length > 0 ? JSON.stringify(areaSnapshots, null, 2) : `"${profileSummary || 'Cold start - no previous area snapshots.'}"`}
+
+Recent Session Context (Doubts, Answers, Extractions & Deltas):
+${JSON.stringify(sessionExtractions, null, 2)}
+
+Relevant Past Vector Matches (Historical Patterns):
+${JSON.stringify(vectorMatches || [], null, 2)}
+
+Initial Session Diagnosis:
+${initialInsight || 'None'}`;
+
+  const prompt = `CONVERSATION SO FAR:
+${conversationHistory}
+
+Generate the next response as the SOCRATIC INQUIRER:`;
+
+  for (const modelName of GEMINI_GENERATIVE_MODELS) {
+    try {
+      const response = await callGeminiWithExponentialBackoff(
+        (m) =>
+          getAi().models.generateContent({
+            model: m,
+            contents: prompt,
+            config: {
+              temperature: 0.35,
+              systemInstruction,
+            },
+          }),
+        modelName,
+        2,
+        500
+      );
+
+      if (response.text?.trim()) {
+        return response.text.trim();
+      }
+    } catch (err: any) {
+      const status = err?.status || err?.code || (err?.message?.includes('503') ? 503 : 'busy');
+      console.warn(`[Gemini Fallback] Socratic Chat: ${modelName} (${status}) -> advancing to next model...`);
+    }
+  }
+
+  return 'Look closely at what you just said. Is this moving you toward clarity, or is it another layer of reflection designed to keep you safe?';
+}
+
+
 
