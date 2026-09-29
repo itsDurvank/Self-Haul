@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { generateSocraticChatReply, generateTextEmbedding } from '@/lib/gemini/client';
+import { generateSocraticChatReply, generateTextEmbedding, isGibberishOrShortNoise } from '@/lib/gemini/client';
 
 export async function POST(req: NextRequest) {
   try {
@@ -98,17 +98,19 @@ export async function POST(req: NextRequest) {
     // 3. Vector RAG Retrieval based on latest user message
     const latestUserMsg = [...messages].reverse().find((m: any) => m.role === 'user')?.content || '';
     let vectorMatches: any[] = [];
-    if (latestUserMsg) {
+    if (latestUserMsg && latestUserMsg.trim().length >= 3 && !isGibberishOrShortNoise(latestUserMsg)) {
       try {
         const queryEmbedding = await generateTextEmbedding(latestUserMsg);
         const { data: rpcMatches } = await supabase.rpc('match_question_analysis', {
           query_embedding: queryEmbedding,
-          match_threshold: 0.28,
+          match_threshold: 0.50, // Strict semantic relevance threshold
           match_count: 5,
         });
 
         if (Array.isArray(rpcMatches)) {
-          const matchQuestionIds = rpcMatches.map((m: any) => m.question_id).filter(Boolean);
+          // Exclude questions belonging to the current session
+          const pastRpcMatches = rpcMatches.filter((m: any) => !(Array.isArray(questionIds) && questionIds.includes(m.question_id)));
+          const matchQuestionIds = pastRpcMatches.map((m: any) => m.question_id).filter(Boolean);
           const pastAnswersMap: Record<string, { raw_text?: string; answer_summary?: string }> = {};
 
           if (matchQuestionIds.length > 0) {
@@ -127,7 +129,7 @@ export async function POST(req: NextRequest) {
             }
           }
 
-          vectorMatches = rpcMatches.map((m: any) => {
+          vectorMatches = pastRpcMatches.map((m: any) => {
             const baseJson = m.analysis_json || {};
             const paObj = pastAnswersMap[m.question_id];
             return {

@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { generateInsightGapAnalysis, generateTextEmbedding } from '@/lib/gemini/client';
+import { generateInsightGapAnalysis, generateTextEmbedding, isGibberishOrShortNoise } from '@/lib/gemini/client';
+
+function hasMeaningfulText(text?: string | null): boolean {
+  if (!text || typeof text !== 'string') return false;
+  const t = text.trim();
+  if (t.length < 3) return false;
+  if (t.toLowerCase() === 'incoherent text input' || t.toLowerCase() === 'none') return false;
+  return !isGibberishOrShortNoise(t);
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,26 +35,50 @@ export async function POST(req: NextRequest) {
 
     const lastInsightAt = aiState?.last_insight_generated_at;
 
-    // 2. Fetch extractions created since last insight (or explicitly passed questionIds)
-    let query = supabase.from('question_analysis').select('question_id, analysis_json, created_at').eq('user_id', effectiveUserId);
-    
-    if (Array.isArray(questionIds) && questionIds.length > 0) {
-      query = query.in('question_id', questionIds);
-    } else if (lastInsightAt) {
-      query = query.gt('created_at', lastInsightAt);
-    }
+    // 2. Fetch extractions for the CURRENT ritual
+    let analysisRows: any[] = [];
+    const hasSpecificQuestions = Array.isArray(questionIds) && questionIds.length > 0;
 
-    let { data: analysisRows } = await query.order('created_at', { ascending: false }).limit(15);
-    
-    // If no new entries since last insight, grab most recent entries as fallback context
-    if (!analysisRows || analysisRows.length === 0) {
-      const { data: fallbackRows } = await supabase
+    if (hasSpecificQuestions) {
+      // Fetch only the questions from THIS current ritual
+      const { data: qaData } = await supabase
         .from('question_analysis')
         .select('question_id, analysis_json, created_at')
         .eq('user_id', effectiveUserId)
+        .in('question_id', questionIds)
+        .order('created_at', { ascending: false });
+      analysisRows = qaData || [];
+
+      // Check if questions in this ritual have any meaningful text
+      const { data: qRows } = await supabase
+        .from('questions')
+        .select('id, raw_text')
+        .in('id', questionIds);
+
+      const hasAnyValidQuestion = (qRows || []).some((q: any) => hasMeaningfulText(q.raw_text));
+      if (!hasAnyValidQuestion && qRows && qRows.length > 0) {
+        return NextResponse.json({
+          success: true,
+          insightText: "This ritual did not contain an authentic question or reflection to analyze. An insight can only be formed when you explore a real situation and your self-advice. When you're ready, bring a genuine doubt to the ritual."
+        });
+      }
+    } else if (lastInsightAt) {
+      // General view: fetch only entries generated since the last insight (no random historical dumps)
+      const { data: recentRows } = await supabase
+        .from('question_analysis')
+        .select('question_id, analysis_json, created_at')
+        .eq('user_id', effectiveUserId)
+        .gt('created_at', lastInsightAt)
         .order('created_at', { ascending: false })
         .limit(10);
-      analysisRows = fallbackRows || [];
+      analysisRows = recentRows || [];
+    }
+
+    if (!analysisRows || analysisRows.length === 0) {
+      return NextResponse.json({
+        success: true,
+        insightText: "No recent self-inquiry entries were found for this ritual. Complete a session with a genuine doubt to generate an insight."
+      });
     }
 
     // Fetch user answers & computed deltas corresponding to these question_ids
@@ -114,17 +146,19 @@ export async function POST(req: NextRequest) {
     let vectorMatches: any[] = [];
     try {
       const topConcern = sessionExtractions[0]?.stated_concern || sessionExtractions[0]?.concern?.stated_concern || sessionExtractions[0]?.input?.raw_text;
-      if (topConcern) {
+      if (topConcern && hasMeaningfulText(topConcern)) {
         const queryEmbedding = await generateTextEmbedding(topConcern);
         const { data: rpcMatches, error: rpcErr } = await supabase.rpc('match_question_analysis', {
           query_embedding: queryEmbedding,
-          match_threshold: 0.3,
+          match_threshold: 0.52, // Strict semantic relevance threshold
           match_count: 5,
         });
         if (rpcErr) {
           console.warn('[RAG INSIGHT RETRIEVAL] RPC error:', rpcErr.message);
         } else if (Array.isArray(rpcMatches)) {
-          const matchQuestionIds = rpcMatches.map((m: any) => m.question_id).filter(Boolean);
+          // Exclude questions belonging to the current session from past matches
+          const pastRpcMatches = rpcMatches.filter((m: any) => !questionIdList.includes(m.question_id));
+          const matchQuestionIds = pastRpcMatches.map((m: any) => m.question_id).filter(Boolean);
           const pastAnswersMap: Record<string, { raw_text?: string; answer_summary?: string }> = {};
 
           if (matchQuestionIds.length > 0) {
@@ -143,7 +177,7 @@ export async function POST(req: NextRequest) {
             }
           }
 
-          vectorMatches = rpcMatches.map((m: any) => {
+          vectorMatches = pastRpcMatches.map((m: any) => {
             const baseJson = m.analysis_json || {};
             const paObj = pastAnswersMap[m.question_id];
             return {
@@ -154,7 +188,7 @@ export async function POST(req: NextRequest) {
 
           console.log(`\n🧠 [RAG INSIGHT RETRIEVAL] Query concern: "${topConcern}"`);
           console.log(`   Fetched ${vectorMatches.length} semantically relevant past matches with advice:`);
-          rpcMatches.forEach((m: any, idx: number) => {
+          pastRpcMatches.forEach((m: any, idx: number) => {
             const raw = m.analysis_json?.input?.raw_text || m.analysis_json?.stated_concern || m.analysis_json?.concern?.stated_concern;
             const sim = (m.similarity * 100).toFixed(1);
             const paObj = pastAnswersMap[m.question_id];
@@ -179,8 +213,9 @@ export async function POST(req: NextRequest) {
       },
     ]);
 
-    // 6. Update user_summary_snapshots profile snapshot
-    if (insightText && insightText.length > 20) {
+    // 6. Update user_summary_snapshots profile snapshot only for real diagnostic insights
+    const isRealInsight = insightText && insightText.length > 20 && !insightText.startsWith('This ritual did not contain') && !insightText.startsWith('No recent self-inquiry');
+    if (isRealInsight) {
       await supabase.from('user_summary_snapshots').upsert([
         {
           user_id: effectiveUserId,
