@@ -6,7 +6,6 @@ import { soundEngine } from '@/lib/audio';
 import { Sparkles } from 'lucide-react';
 import { LiquidChrome } from '@/components/ui/LiquidChrome';
 import { LiquidGlass } from '@/components/ui/LiquidGlass';
-import { InstallPwaButton } from '@/components/InstallPwaButton';
 
 interface LandingProps {
   onEnter: () => void;
@@ -58,7 +57,6 @@ export const Landing: React.FC<LandingProps> = ({ onEnter }) => {
           <Sparkles className="w-3.5 h-3.5 text-zinc-200" />
           <span>A Private Ritual</span>
         </motion.div>
-        <InstallPwaButton />
       </div>
 
       {/* Center Hero Content */}
