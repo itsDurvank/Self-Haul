@@ -694,15 +694,18 @@ export const Reflection: React.FC<ReflectionProps> = ({ questions, onBurnAll, on
             {/* SCREEN 1: THE SESSIONS GRID (Strictly just boxes) */}
             {!selectedSession ? (
               <div className="relative z-10 w-full min-h-screen flex flex-col px-6 py-8 sm:px-12 sm:py-10 lg:px-16 lg:py-12">
-                {/* Top Navigation Bar: "Sessions" matching Paint Reference */}
+                {/* Top Navigation Bar: "SESSIONS" matching the Private Ritual pill & Portal font */}
                 <div className="w-full flex items-center justify-between pb-6 border-b border-white/10 shrink-0">
-                  <h1 className="text-3xl sm:text-4xl md:text-5xl font-sans font-light tracking-wide text-white">
-                    Sessions
-                  </h1>
+                  <div className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full bg-black/50 backdrop-blur-xl border border-white/15 shadow-[0_4px_20px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.2)]">
+                    <Sparkles className="w-3.5 h-3.5 text-zinc-200 shrink-0" />
+                    <h1 className="text-xs sm:text-sm md:text-base font-mono font-medium tracking-[0.3em] uppercase text-white">
+                      SESSIONS
+                    </h1>
+                  </div>
 
                   <button
                     onClick={() => setSessionsModalOpen(false)}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 hover:bg-white/15 border border-white/20 text-xs font-mono text-zinc-200 hover:text-white transition-all duration-200 cursor-pointer shadow-lg backdrop-blur-md"
+                    className="flex items-center gap-2 px-5 py-2 rounded-full bg-black/50 hover:bg-black/75 backdrop-blur-xl border border-white/15 hover:border-white/30 text-xs font-mono tracking-[0.2em] uppercase text-zinc-300 hover:text-white transition-all duration-200 cursor-pointer shadow-[0_4px_20px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.15)]"
                   >
                     <span>Close ✕</span>
                   </button>
@@ -713,14 +716,14 @@ export const Reflection: React.FC<ReflectionProps> = ({ questions, onBurnAll, on
                   {sessionsLoading ? (
                     <div className="w-full py-32 flex flex-col items-center justify-center space-y-4">
                       <div className="w-8 h-8 rounded-full border-2 border-white/20 border-t-white animate-spin" />
-                      <span className="text-xs font-mono text-zinc-300 tracking-widest uppercase">
+                      <span className="text-xs font-mono text-zinc-300 tracking-[0.25em] uppercase">
                         Loading archives...
                       </span>
                     </div>
                   ) : sessionsList.length === 0 ? (
                     <div className="w-full py-32 flex flex-col items-center justify-center text-center space-y-3">
                       <History className="w-12 h-12 text-zinc-500 mb-2" />
-                      <h3 className="text-base font-mono text-zinc-200">No Previous Sessions Yet</h3>
+                      <h3 className="text-sm font-mono tracking-[0.2em] uppercase text-zinc-200">No Previous Sessions Yet</h3>
                       <p className="text-xs font-mono text-zinc-400 max-w-sm">
                         Complete your doubts and reflections to archive them here.
                       </p>
@@ -751,29 +754,29 @@ export const Reflection: React.FC<ReflectionProps> = ({ questions, onBurnAll, on
                             saturation={120}
                             glowOnHoverOnly={true}
                             style={{
-                              background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%)',
-                              boxShadow: 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.35), 0 12px 35px rgba(0, 0, 0, 0.45)',
+                              background: 'radial-gradient(circle at 50% 0%, rgba(35, 40, 52, 0.75) 0%, rgba(12, 14, 20, 0.9) 100%)',
+                              boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.2), 0 10px 30px rgba(0, 0, 0, 0.7)',
                             }}
-                            className="w-full min-h-[140px] sm:min-h-[155px] border border-white/20 group-hover:border-white/50 transition-all duration-300 flex flex-col justify-between"
+                            className="w-full min-h-[140px] sm:min-h-[155px] border border-white/15 group-hover:border-white/40 transition-all duration-300 flex flex-col justify-between"
                           >
                             <div className="w-full flex flex-col justify-between h-full space-y-6 text-left">
                               {/* Top-Left Date (strictly matching the Paint sketch) */}
-                              <div className="space-y-1">
-                                <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest block font-medium">
+                              <div className="space-y-1.5">
+                                <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-[0.3em] block font-semibold">
                                   DATE
                                 </span>
-                                <h3 className="text-base sm:text-lg font-sans font-normal text-white group-hover:text-zinc-100 transition-colors">
+                                <h3 className="text-sm sm:text-base font-mono font-semibold tracking-[0.15em] uppercase text-white group-hover:text-zinc-100 transition-colors">
                                   {session.dateLabel}
                                 </h3>
                               </div>
 
                               {/* Bottom Footer Info inside Box */}
-                              <div className="flex items-center justify-between pt-3 border-t border-white/10 text-xs font-mono text-zinc-400">
+                              <div className="flex items-center justify-between pt-3 border-t border-white/10 text-xs font-mono tracking-wider text-zinc-400">
                                 <span>
-                                  {session.entries.length} {session.entries.length === 1 ? 'entry' : 'entries'}
+                                  {session.entries.length} {session.entries.length === 1 ? 'ENTRY' : 'ENTRIES'}
                                 </span>
-                                <span className="text-white/80 group-hover:text-white transition-colors">
-                                  Open →
+                                <span className="text-white/80 group-hover:text-white transition-colors tracking-widest uppercase">
+                                  [ OPEN ]
                                 </span>
                               </div>
                             </div>
@@ -789,21 +792,24 @@ export const Reflection: React.FC<ReflectionProps> = ({ questions, onBurnAll, on
               <div className="relative z-10 w-full min-h-screen flex flex-col px-6 py-8 sm:px-12 sm:py-10 lg:px-16 lg:py-12">
                 {/* Top Header of the Detail Screen */}
                 <div className="w-full flex items-center justify-between pb-6 border-b border-white/10 shrink-0">
-                  <div className="flex flex-col space-y-1">
+                  <div className="flex flex-col space-y-2">
                     <button
                       onClick={() => {
                         soundEngine.playButtonClickSound();
                         setSelectedSession(null);
                       }}
-                      className="flex items-center gap-2 text-xs font-mono text-zinc-300 hover:text-white mb-1 cursor-pointer transition-colors"
+                      className="inline-flex items-center gap-2 text-xs font-mono tracking-[0.2em] uppercase text-zinc-300 hover:text-white cursor-pointer transition-colors"
                     >
                       <ArrowLeft className="w-3.5 h-3.5 text-white" />
                       <span>Back to Sessions</span>
                     </button>
-                    <h2 className="text-2xl sm:text-3xl md:text-4xl font-sans font-light text-white">
-                      {selectedSession.dateLabel}
-                    </h2>
-                    <span className="text-xs font-mono text-zinc-400">
+                    <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-black/50 backdrop-blur-xl border border-white/15 shadow-[0_4px_20px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.2)] w-fit">
+                      <Sparkles className="w-3.5 h-3.5 text-zinc-200" />
+                      <h2 className="text-xs sm:text-sm font-mono font-semibold tracking-[0.25em] uppercase text-white">
+                        {selectedSession.dateLabel}
+                      </h2>
+                    </div>
+                    <span className="text-xs font-mono tracking-wider text-zinc-400">
                       {selectedSession.entries.length} {selectedSession.entries.length === 1 ? 'entry' : 'entries'} in this ritual
                     </span>
                   </div>
@@ -813,7 +819,7 @@ export const Reflection: React.FC<ReflectionProps> = ({ questions, onBurnAll, on
                       setSelectedSession(null);
                       setSessionsModalOpen(false);
                     }}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 hover:bg-white/15 border border-white/20 text-xs font-mono text-zinc-200 hover:text-white transition-all duration-200 cursor-pointer shadow-lg backdrop-blur-md"
+                    className="flex items-center gap-2 px-5 py-2 rounded-full bg-black/50 hover:bg-black/75 backdrop-blur-xl border border-white/15 hover:border-white/30 text-xs font-mono tracking-[0.2em] uppercase text-zinc-300 hover:text-white transition-all duration-200 cursor-pointer shadow-[0_4px_20px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.15)]"
                   >
                     <span>Close ✕</span>
                   </button>
