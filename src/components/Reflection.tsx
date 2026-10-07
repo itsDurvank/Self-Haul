@@ -950,16 +950,20 @@ export const Reflection: React.FC<ReflectionProps> = ({ questions, onBurnAll, on
                 padding="12px"
                 onClick={() => {
                   soundEngine.playButtonClickSound();
-                  setSessionsModalOpen(false);
-                  if (onGoHome) onGoHome();
-                  else onRestart();
+                  if (selectedSession) {
+                    // Back from session history chats to all sessions preview
+                    setSelectedSession(null);
+                  } else {
+                    // Back from sessions preview to current ritual reviewing page
+                    setSessionsModalOpen(false);
+                  }
                 }}
                 style={{
                   background: 'radial-gradient(circle at 50% 0%, rgba(35, 40, 52, 0.75) 0%, rgba(12, 14, 20, 0.85) 100%)',
                   boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.25), 0 4px 12px rgba(0, 0, 0, 0.4)',
                 }}
                 className="flex items-center justify-center text-zinc-200 hover:text-white cursor-pointer transition-all duration-300 focus:outline-none border border-white/25 hover:border-white/50 shadow-2xl"
-                title="Return to Landing Page"
+                title={selectedSession ? "Back to Sessions Preview" : "Back to Ritual Review"}
               >
                 <ArrowLeft className="w-5 h-5 text-zinc-100" />
               </LiquidGlass>
