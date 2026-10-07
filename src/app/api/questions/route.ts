@@ -3,7 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export async function POST(req: NextRequest) {
   try {
-    const { rawText, questionId, userId: inputUserId } = await req.json();
+    const { rawText, questionId, userId: inputUserId, sessionId } = await req.json();
     if (!rawText) {
       return NextResponse.json({ error: 'Missing rawText parameter' }, { status: 400 });
     }
@@ -16,12 +16,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, questionId: questionId || crypto.randomUUID(), guest: true });
     }
 
+    if (sessionId) {
+      await supabase
+        .from('sessions')
+        .upsert([{ id: sessionId, user_id: effectiveUserId }], { onConflict: 'id' });
+    }
+
     const { data, error } = await supabase
       .from('questions')
       .insert([
         {
           id: questionId || undefined,
           user_id: effectiveUserId,
+          session_id: sessionId || undefined,
           raw_text: rawText,
         },
       ])

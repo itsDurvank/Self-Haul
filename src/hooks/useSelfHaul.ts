@@ -173,6 +173,7 @@ export function useSelfHaul() {
     if (!trimmed) return;
 
     const clientQId = crypto.randomUUID();
+    const currentSessionId = state.sessionId || crypto.randomUUID();
     const userId = state.user?.id || 'guest';
 
     const newQ: Question = {
@@ -184,6 +185,7 @@ export function useSelfHaul() {
     // 1. Immediately update UI state for 0ms latency
     setState((prev) => ({
       ...prev,
+      sessionId: prev.sessionId || currentSessionId,
       questions: [...prev.questions, newQ],
     }));
 
@@ -197,6 +199,7 @@ export function useSelfHaul() {
           questionId: clientQId,
           rawText: trimmed,
           userId,
+          sessionId: currentSessionId,
         }),
       });
       const qData = await qRes.json();
@@ -372,6 +375,22 @@ function prioritizeReadyQueue(queue: string[], questions: Question[], startIndex
       const isFinished = nextIndex >= prev.queue.length;
       const reorderedQueue = isFinished ? prev.queue : prioritizeReadyQueue(prev.queue, updatedQuestions, nextIndex);
 
+      if (isFinished && prev.user) {
+        fetch('/api/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: prev.sessionId || crypto.randomUUID(),
+            questions: updatedQuestions.map((q) => ({
+              id: q.id,
+              text: q.text,
+              rephrasedText: q.rephrasedText,
+              answer: q.answer || (q.skipped ? '[Skipped]' : null),
+            })),
+          }),
+        }).catch((err) => console.warn('Failed to sync session on ritual complete:', err));
+      }
+
       return {
         ...prev,
         questions: updatedQuestions,
@@ -401,6 +420,22 @@ function prioritizeReadyQueue(queue: string[], questions: Question[], startIndex
       const isFinished = nextIndex >= prev.queue.length;
       const reorderedQueue = isFinished ? prev.queue : prioritizeReadyQueue(prev.queue, updatedQuestions, nextIndex);
 
+      if (isFinished && prev.user) {
+        fetch('/api/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: prev.sessionId || crypto.randomUUID(),
+            questions: updatedQuestions.map((q) => ({
+              id: q.id,
+              text: q.text,
+              rephrasedText: q.rephrasedText,
+              answer: q.answer || (q.skipped ? '[Skipped]' : null),
+            })),
+          }),
+        }).catch((err) => console.warn('Failed to sync session on ritual complete:', err));
+      }
+
       return {
         ...prev,
         questions: updatedQuestions,
@@ -415,6 +450,7 @@ function prioritizeReadyQueue(queue: string[], questions: Question[], startIndex
     localStorage.removeItem(STORAGE_KEY);
     setState((prev) => ({
       ...initialState,
+      sessionId: crypto.randomUUID(),
       soundOn: prev.soundOn,
       user: prev.user,
       stage: prev.user ? 'dump' : 'landing',
@@ -463,6 +499,7 @@ function prioritizeReadyQueue(queue: string[], questions: Question[], startIndex
     localStorage.removeItem(STORAGE_KEY);
     setState((prev) => ({
       ...prev,
+      sessionId: crypto.randomUUID(),
       questions: [],
       queue: [],
       currentIndex: 0,

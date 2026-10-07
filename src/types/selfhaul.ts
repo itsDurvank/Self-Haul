@@ -20,6 +20,7 @@ export interface Question {
 
 export interface AppState {
   stage: AppStage;
+  sessionId?: string;
   questions: Question[];
   queue: string[]; // Shuffled question IDs
   currentIndex: number;
