@@ -771,17 +771,7 @@ export const Reflection: React.FC<ReflectionProps> = ({ questions, onBurnAll, on
               <div className="relative z-10 w-full min-h-screen flex flex-col px-6 py-8 sm:px-12 sm:py-10 lg:px-16 lg:py-12">
                 {/* Top Header of the Detail Screen */}
                 <div className="w-full flex items-center justify-between pb-6 border-b border-white/10 shrink-0">
-                  <div className="flex flex-col space-y-2">
-                    <button
-                      onClick={() => {
-                        soundEngine.playButtonClickSound();
-                        setSelectedSession(null);
-                      }}
-                      className="inline-flex items-center gap-2 text-xs font-mono tracking-[0.2em] uppercase text-zinc-300 hover:text-white cursor-pointer transition-colors"
-                    >
-                      <ArrowLeft className="w-3.5 h-3.5 text-white" />
-                      <span>Back to Sessions</span>
-                    </button>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                     <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-black/50 backdrop-blur-xl border border-white/15 shadow-[0_4px_20px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.2)] w-fit">
                       <Sparkles className="w-3.5 h-3.5 text-zinc-200" />
                       <h2 className="text-xs sm:text-sm font-mono font-semibold tracking-[0.25em] uppercase text-white">
