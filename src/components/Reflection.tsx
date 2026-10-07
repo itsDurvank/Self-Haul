@@ -678,136 +678,130 @@ export const Reflection: React.FC<ReflectionProps> = ({ questions, onBurnAll, on
         )}
       </AnimatePresence>
 
-      {/* Previous Sessions Modal Overlay */}
+      {/* Previous Sessions Huge Full-Screen View matching Paint Reference */}
       <AnimatePresence>
         {sessionsModalOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/85 backdrop-blur-2xl flex items-center justify-center p-3 sm:p-6"
-            onClick={() => setSessionsModalOpen(false)}
+            transition={{ duration: 0.25 }}
+            className="fixed inset-0 z-50 bg-[#030306] overflow-y-auto px-6 py-8 sm:px-12 sm:py-10 lg:px-16 lg:py-12 custom-scrollbar flex flex-col"
           >
-            <motion.div
-              initial={{ scale: 0.94, opacity: 0, y: 16 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.94, opacity: 0, y: 16 }}
-              transition={{ duration: 0.25 }}
-              className="w-full max-w-2xl max-h-[88dvh] bg-[#0c0e16]/95 backdrop-blur-3xl rounded-3xl border border-white/20 shadow-[0_25px_60px_rgba(0,0,0,0.95),inset_0_1px_1px_rgba(255,255,255,0.25)] flex flex-col overflow-hidden p-5 sm:p-6"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between pb-3.5 border-b border-white/10 shrink-0">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-400/30 text-cyan-300">
-                    <History className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h2 className="text-sm sm:text-base font-mono font-bold tracking-wider text-white uppercase">
-                      Previous Ritual Sessions
-                    </h2>
-                    <span className="text-[11px] font-mono text-zinc-400">
-                      Longitudinal reflection archives saved per user isolation
-                    </span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setSessionsModalOpen(false)}
-                  className="px-2.5 py-1 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors cursor-pointer text-xs font-mono border border-white/10"
-                >
-                  Close ✕
-                </button>
+            {/* Top Navigation Bar: "Sessions" matching the Paint Reference */}
+            <div className="w-full flex items-center justify-between pb-6 border-b border-white/10 shrink-0">
+              <div className="flex flex-col">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-sans font-light tracking-wide text-white">
+                  Sessions
+                </h1>
+                <p className="text-xs font-mono text-zinc-400 mt-1.5 tracking-wider">
+                  Longitudinal reflection archives &middot; saved per user isolation
+                </p>
               </div>
 
-              {/* Content: Sessions grouped by date */}
-              <div className="flex-1 overflow-y-auto space-y-6 my-4 pr-1.5 custom-scrollbar min-h-0">
-                {sessionsLoading ? (
-                  <div className="flex flex-col items-center justify-center py-20 space-y-3">
-                    <div className="w-7 h-7 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-xs font-mono text-cyan-300 tracking-wider">
-                      Retrieving authenticated user records...
-                    </span>
-                  </div>
-                ) : sessionsList.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-20 space-y-2 text-center">
-                    <History className="w-9 h-9 text-zinc-500 mb-2" />
-                    <p className="text-sm font-mono text-zinc-300">No previous sessions found</p>
-                    <p className="text-xs font-mono text-zinc-400">
-                      Complete your doubts and reflections to archive them here.
-                    </p>
-                  </div>
-                ) : (
-                  sessionsList.map((session, sIdx) => (
-                    <div key={session.sessionId || sIdx} className="space-y-3">
-                      {/* Session Date Badge Header */}
-                      <div className="sticky top-0 z-20 flex items-center justify-between py-1.5 px-3 rounded-lg bg-black/80 backdrop-blur-md border border-white/10 shadow-sm">
-                        <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-                          <span className="text-xs font-mono font-semibold text-cyan-200 tracking-wider">
-                            {session.dateLabel}
-                          </span>
-                        </div>
-                        <span className="text-[11px] font-mono text-zinc-400">
-                          {session.entries.length} {session.entries.length === 1 ? 'entry' : 'entries'}
-                        </span>
-                      </div>
+              <button
+                onClick={() => setSessionsModalOpen(false)}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 hover:bg-white/15 border border-white/20 text-xs font-mono text-zinc-200 hover:text-white transition-all duration-200 cursor-pointer shadow-lg backdrop-blur-md"
+              >
+                <ArrowLeft className="w-3.5 h-3.5 text-cyan-300" />
+                <span>Back to Reflection</span>
+              </button>
+            </div>
 
-                      {/* List of Entries for this session with the exact same UI as the reviewing section */}
-                      <div className="space-y-3">
-                        {session.entries.map((entry, idx) => {
-                          const isExpanded = !!sessionsExpandedMap[entry.id];
+            {/* Grid of Sessions Boxes (utilizing the huge overall screen) */}
+            <div className="w-full flex-1 mt-8">
+              {sessionsLoading ? (
+                <div className="w-full py-32 flex flex-col items-center justify-center space-y-4">
+                  <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                  <span className="text-xs font-mono text-cyan-300 tracking-widest uppercase">
+                    Loading your archives...
+                  </span>
+                </div>
+              ) : sessionsList.length === 0 ? (
+                <div className="w-full py-32 flex flex-col items-center justify-center text-center space-y-3">
+                  <History className="w-12 h-12 text-zinc-600 mb-2" />
+                  <h3 className="text-base font-mono text-zinc-300">No Previous Sessions Yet</h3>
+                  <p className="text-xs font-mono text-zinc-500 max-w-sm">
+                    Complete your doubts and reflections to archive them here.
+                  </p>
+                </div>
+              ) : (
+                <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 items-start pb-20">
+                  {sessionsList.map((session, sIdx) => (
+                    <motion.div
+                      key={session.sessionId || sIdx}
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: sIdx * 0.05 }}
+                    >
+                      <LiquidGlass
+                        aberrationIntensity={1.5}
+                        blurAmount={0.05}
+                        borderRadius={22}
+                        displacementScale={30}
+                        elasticity={0.15}
+                        padding="20px 22px"
+                        saturation={120}
+                        glowOnHoverOnly={true}
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%)',
+                          boxShadow: 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.35), 0 12px 35px rgba(0, 0, 0, 0.45)',
+                        }}
+                        className="w-full border border-white/20 hover:border-cyan-400/50 transition-all duration-300"
+                      >
+                        <div className="w-full flex flex-col space-y-4 text-left">
+                          {/* Top-Left Date (as in Paint reference) + Entry Count */}
+                          <div className="flex items-center justify-between pb-2.5 border-b border-white/10">
+                            <div className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#00f0ff]" />
+                              <span className="text-[11px] font-mono font-semibold text-cyan-200 tracking-wider uppercase">
+                                {session.dateLabel}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-zinc-300 border border-white/10">
+                              {session.entries.length} {session.entries.length === 1 ? 'ENTRY' : 'ENTRIES'}
+                            </span>
+                          </div>
 
-                          return (
-                            <motion.div
-                              key={entry.id}
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: idx * 0.04 }}
-                            >
-                              <LiquidGlass
-                                aberrationIntensity={1.5}
-                                blurAmount={0.04}
-                                borderRadius={20}
-                                displacementScale={30}
-                                elasticity={0.2}
-                                padding="18px 22px"
-                                saturation={120}
-                                glowOnHoverOnly={true}
-                                onClick={() => toggleSessionEntryExpand(entry.id)}
-                                style={{
-                                  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%)',
-                                  boxShadow: 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.4), 0 10px 30px rgba(0, 0, 0, 0.3)',
-                                }}
-                                className="w-full border border-white/25 hover:border-white/45 transition-all duration-300 cursor-pointer"
-                              >
-                                <div className="w-full flex flex-col space-y-3 text-left">
-                                  {/* Card Header: Entry Number & Expand Toggle */}
-                                  <div className="flex items-center justify-between gap-4 pb-0.5 border-b border-white/10 pb-2">
-                                    <span className="text-xs font-mono font-semibold text-cyan-300 uppercase tracking-[0.2em]">
+                          {/* Entries inside this Session Box matching Review Section UI */}
+                          <div className="w-full space-y-3">
+                            {session.entries.map((entry, idx) => {
+                              const isExpanded = !!sessionsExpandedMap[entry.id];
+
+                              return (
+                                <div
+                                  key={entry.id}
+                                  className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-white/20 transition-all space-y-2.5 cursor-pointer"
+                                  onClick={() => toggleSessionEntryExpand(entry.id)}
+                                >
+                                  {/* Entry Header: ENTRY # & Expand Toggle */}
+                                  <div className="flex items-center justify-between gap-2 pb-1 border-b border-white/5">
+                                    <span className="text-[11px] font-mono font-semibold text-cyan-300 uppercase tracking-[0.2em]">
                                       ENTRY {idx + 1}
                                     </span>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-[11px] font-mono text-zinc-400">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[10px] font-mono text-zinc-400">
                                         {isExpanded ? 'Collapse' : 'Tap to expand'}
                                       </span>
                                       {isExpanded ? (
-                                        <ChevronUp className="w-4 h-4 text-cyan-300" />
+                                        <ChevronUp className="w-3.5 h-3.5 text-cyan-300" />
                                       ) : (
-                                        <ChevronDown className="w-4 h-4 text-zinc-400" />
+                                        <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
                                       )}
                                     </div>
                                   </div>
 
-                                  {/* 1. Original Question */}
+                                  {/* 1. ORIGINAL DOUBT */}
                                   <div className="space-y-1">
-                                    <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest font-semibold block">
+                                    <span className="text-[9px] font-mono text-zinc-400 uppercase tracking-widest font-semibold block">
                                       ORIGINAL DOUBT
                                     </span>
-                                    <div className={`text-sm sm:text-base font-sans text-zinc-200 font-normal leading-relaxed ${!isExpanded ? 'line-clamp-1' : ''}`}>
+                                    <div className={`text-xs sm:text-sm font-sans text-zinc-200 leading-relaxed ${!isExpanded ? 'line-clamp-2' : ''}`}>
                                       "{entry.question}"
                                     </div>
                                   </div>
 
+                                  {/* Animated Expandable Narration & Response */}
                                   <AnimatePresence>
                                     {isExpanded && (
                                       <motion.div
@@ -815,54 +809,49 @@ export const Reflection: React.FC<ReflectionProps> = ({ questions, onBurnAll, on
                                         animate={{ opacity: 1, height: 'auto' }}
                                         exit={{ opacity: 0, height: 0 }}
                                         transition={{ duration: 0.25 }}
-                                        className="space-y-3 pt-2 border-t border-white/10 overflow-hidden"
+                                        className="space-y-2.5 pt-2 border-t border-white/10 overflow-hidden"
                                       >
-                                        {/* 2. Rephrased Narration */}
+                                        {/* 2. THIRD-PERSON NARRATION */}
                                         {entry.rephrasedText && (
-                                          <div className="space-y-1 bg-white/[0.03] p-3 rounded-xl border border-white/10">
-                                            <span className="text-[10px] font-mono text-cyan-300 uppercase tracking-widest font-semibold block">
+                                          <div className="space-y-1 bg-white/[0.03] p-2.5 rounded-xl border border-white/10">
+                                            <span className="text-[9px] font-mono text-cyan-300 uppercase tracking-widest font-semibold block">
                                               THIRD-PERSON NARRATION
                                             </span>
-                                            <p className="text-sm font-serif italic text-zinc-200 leading-relaxed">
+                                            <p className="text-xs font-serif italic text-zinc-200 leading-relaxed">
                                               {entry.rephrasedText}
                                             </p>
                                           </div>
                                         )}
 
-                                        {/* 3. Your Response / Answer */}
-                                        <div className="space-y-1 bg-white/[0.02] p-3 rounded-xl border border-white/5">
-                                          <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest font-semibold block">
+                                        {/* 3. YOUR RESPONSE */}
+                                        <div className="space-y-1 bg-white/[0.02] p-2.5 rounded-xl border border-white/5">
+                                          <span className="text-[9px] font-mono text-cyan-400 uppercase tracking-widest font-semibold block">
                                             YOUR RESPONSE
                                           </span>
                                           {entry.skipped ? (
-                                            <p className="text-sm font-sans italic text-zinc-400">[Skipped]</p>
+                                            <p className="text-xs font-sans italic text-zinc-400">[Skipped]</p>
                                           ) : entry.answer ? (
-                                            <p className="text-sm sm:text-base font-sans text-zinc-100 leading-relaxed whitespace-pre-wrap">
+                                            <p className="text-xs sm:text-sm font-sans text-zinc-100 leading-relaxed whitespace-pre-wrap">
                                               {entry.answer}
                                             </p>
                                           ) : (
-                                            <p className="text-sm font-sans italic text-zinc-400">[No response provided]</p>
+                                            <p className="text-xs font-sans italic text-zinc-400">[No response provided]</p>
                                           )}
                                         </div>
                                       </motion.div>
                                     )}
                                   </AnimatePresence>
                                 </div>
-                              </LiquidGlass>
-                            </motion.div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {/* Footer */}
-              <div className="pt-3 border-t border-white/10 text-[10px] font-mono text-zinc-400 text-center shrink-0">
-                User isolated session logs stored securely in Supabase
-              </div>
-            </motion.div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </LiquidGlass>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
