@@ -101,6 +101,7 @@ export default function Home() {
             questions={state.questions}
             onBurnAll={burnAll}
             onRestart={startNewRitual}
+            onGoHome={() => setStage('landing')}
             onRequestAIInsight={requestAIInsight}
           />
         );
