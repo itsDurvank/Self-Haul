@@ -505,37 +505,7 @@ export const Reflection: React.FC<ReflectionProps> = ({ questions, onBurnAll, on
         </div>
       </div>
 
-      {/* Bottom-Left Apple UI Glass Back Button */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9, y: 12 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        whileHover={{ scale: 1.05, y: -2 }}
-        whileTap={{ scale: 0.93, y: 1 }}
-        transition={{ type: 'spring', stiffness: 450, damping: 20 }}
-        className="fixed bottom-6 left-6 sm:bottom-8 sm:left-8 z-30 pointer-events-auto"
-      >
-        <LiquidGlass
-          aberrationIntensity={1.5}
-          blurAmount={0.08}
-          borderRadius={999}
-          displacementScale={30}
-          elasticity={0.25}
-          padding="12px"
-          onClick={() => {
-            soundEngine.playButtonClickSound();
-            if (onGoHome) onGoHome();
-            else onRestart();
-          }}
-          style={{
-            background: 'radial-gradient(circle at 50% 0%, rgba(35, 40, 52, 0.75) 0%, rgba(12, 14, 20, 0.85) 100%)',
-            boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.25), 0 4px 12px rgba(0, 0, 0, 0.4)',
-          }}
-          className="flex items-center justify-center text-zinc-200 hover:text-white cursor-pointer transition-all duration-300 focus:outline-none border border-white/25 hover:border-white/50 shadow-2xl"
-          title="Return to Landing Page"
-        >
-          <ArrowLeft className="w-5 h-5 text-zinc-100" />
-        </LiquidGlass>
-      </motion.div>
+
 
       {/* AI Insight On-Demand Modal Overlay & Socratic Dialogue */}
       <AnimatePresence>
