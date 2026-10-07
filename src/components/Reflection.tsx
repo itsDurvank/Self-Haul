@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Question } from '@/types/selfhaul';
 import { formatAsText, formatAsMarkdown, downloadFile } from '@/lib/export';
@@ -217,6 +217,20 @@ export const Reflection: React.FC<ReflectionProps> = ({ questions, onBurnAll, on
       onBurnAll();
     }, 1800);
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (selectedSession) {
+          setSelectedSession(null);
+        } else if (sessionsModalOpen) {
+          setSessionsModalOpen(false);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedSession, sessionsModalOpen]);
 
   return (
     <div className="relative min-h-[100dvh] w-full flex flex-col items-center justify-between p-4 sm:p-10 bg-[#030306] text-zinc-100 overflow-x-hidden select-none">
@@ -674,13 +688,6 @@ export const Reflection: React.FC<ReflectionProps> = ({ questions, onBurnAll, on
                       SESSIONS
                     </h1>
                   </div>
-
-                  <button
-                    onClick={() => setSessionsModalOpen(false)}
-                    className="flex items-center gap-2 px-5 py-2 rounded-full bg-black/50 hover:bg-black/75 backdrop-blur-xl border border-white/15 hover:border-white/30 text-xs font-mono tracking-[0.2em] uppercase text-zinc-300 hover:text-white transition-all duration-200 cursor-pointer shadow-[0_4px_20px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.15)]"
-                  >
-                    <span>Close ✕</span>
-                  </button>
                 </div>
 
                 {/* Content: Grid of strictly just boxes */}
@@ -893,41 +900,41 @@ export const Reflection: React.FC<ReflectionProps> = ({ questions, onBurnAll, on
               </div>
             )}
 
-            {/* Bottom-Left Floating Back Button: only appears when reviewing a past session chat */}
-            <AnimatePresence>
-              {selectedSession && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9, y: 12 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9, y: 12 }}
-                  whileHover={{ scale: 1.05, y: -2 }}
-                  whileTap={{ scale: 0.93, y: 1 }}
-                  transition={{ type: 'spring', stiffness: 450, damping: 20 }}
-                  className="fixed bottom-6 left-6 sm:bottom-8 sm:left-8 z-50 pointer-events-auto"
-                >
-                  <LiquidGlass
-                    aberrationIntensity={1.5}
-                    blurAmount={0.08}
-                    borderRadius={999}
-                    displacementScale={30}
-                    elasticity={0.25}
-                    padding="12px"
-                    onClick={() => {
-                      soundEngine.playButtonClickSound();
-                      setSelectedSession(null);
-                    }}
-                    style={{
-                      background: 'radial-gradient(circle at 50% 0%, rgba(35, 40, 52, 0.75) 0%, rgba(12, 14, 20, 0.85) 100%)',
-                      boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.25), 0 4px 12px rgba(0, 0, 0, 0.4)',
-                    }}
-                    className="flex items-center justify-center text-zinc-200 hover:text-white cursor-pointer transition-all duration-300 focus:outline-none border border-white/25 hover:border-white/50 shadow-2xl"
-                    title="Back to Sessions Preview"
-                  >
-                    <ArrowLeft className="w-5 h-5 text-zinc-100" />
-                  </LiquidGlass>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {/* Bottom-Left Floating Back Button: hierarchically takes user back to sessions preview or back to ritual */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 12 }}
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.93, y: 1 }}
+              transition={{ type: 'spring', stiffness: 450, damping: 20 }}
+              className="fixed bottom-6 left-6 sm:bottom-8 sm:left-8 z-50 pointer-events-auto"
+            >
+              <LiquidGlass
+                aberrationIntensity={1.5}
+                blurAmount={0.08}
+                borderRadius={999}
+                displacementScale={30}
+                elasticity={0.25}
+                padding="12px"
+                onClick={() => {
+                  soundEngine.playButtonClickSound();
+                  if (selectedSession) {
+                    setSelectedSession(null);
+                  } else {
+                    setSessionsModalOpen(false);
+                  }
+                }}
+                style={{
+                  background: 'radial-gradient(circle at 50% 0%, rgba(35, 40, 52, 0.75) 0%, rgba(12, 14, 20, 0.85) 100%)',
+                  boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.25), 0 4px 12px rgba(0, 0, 0, 0.4)',
+                }}
+                className="flex items-center justify-center text-zinc-200 hover:text-white cursor-pointer transition-all duration-300 focus:outline-none border border-white/25 hover:border-white/50 shadow-2xl"
+                title={selectedSession ? 'Back to Sessions Preview' : 'Back to Ritual Review'}
+              >
+                <ArrowLeft className="w-5 h-5 text-zinc-100" />
+              </LiquidGlass>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
