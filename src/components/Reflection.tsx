@@ -932,42 +932,41 @@ export const Reflection: React.FC<ReflectionProps> = ({ questions, onBurnAll, on
               </div>
             )}
 
-            {/* Bottom-Left Floating Back Button (similar to the void) to go back to landing page */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 12 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              whileHover={{ scale: 1.05, y: -2 }}
-              whileTap={{ scale: 0.93, y: 1 }}
-              transition={{ type: 'spring', stiffness: 450, damping: 20 }}
-              className="fixed bottom-6 left-6 sm:bottom-8 sm:left-8 z-50 pointer-events-auto"
-            >
-              <LiquidGlass
-                aberrationIntensity={1.5}
-                blurAmount={0.08}
-                borderRadius={999}
-                displacementScale={30}
-                elasticity={0.25}
-                padding="12px"
-                onClick={() => {
-                  soundEngine.playButtonClickSound();
-                  if (selectedSession) {
-                    // Back from session history chats to all sessions preview
-                    setSelectedSession(null);
-                  } else {
-                    // Back from sessions preview to current ritual reviewing page
-                    setSessionsModalOpen(false);
-                  }
-                }}
-                style={{
-                  background: 'radial-gradient(circle at 50% 0%, rgba(35, 40, 52, 0.75) 0%, rgba(12, 14, 20, 0.85) 100%)',
-                  boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.25), 0 4px 12px rgba(0, 0, 0, 0.4)',
-                }}
-                className="flex items-center justify-center text-zinc-200 hover:text-white cursor-pointer transition-all duration-300 focus:outline-none border border-white/25 hover:border-white/50 shadow-2xl"
-                title={selectedSession ? "Back to Sessions Preview" : "Back to Ritual Review"}
-              >
-                <ArrowLeft className="w-5 h-5 text-zinc-100" />
-              </LiquidGlass>
-            </motion.div>
+            {/* Bottom-Left Floating Back Button: only appears when reviewing a past session chat */}
+            <AnimatePresence>
+              {selectedSession && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9, y: 12 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 12 }}
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.93, y: 1 }}
+                  transition={{ type: 'spring', stiffness: 450, damping: 20 }}
+                  className="fixed bottom-6 left-6 sm:bottom-8 sm:left-8 z-50 pointer-events-auto"
+                >
+                  <LiquidGlass
+                    aberrationIntensity={1.5}
+                    blurAmount={0.08}
+                    borderRadius={999}
+                    displacementScale={30}
+                    elasticity={0.25}
+                    padding="12px"
+                    onClick={() => {
+                      soundEngine.playButtonClickSound();
+                      setSelectedSession(null);
+                    }}
+                    style={{
+                      background: 'radial-gradient(circle at 50% 0%, rgba(35, 40, 52, 0.75) 0%, rgba(12, 14, 20, 0.85) 100%)',
+                      boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.25), 0 4px 12px rgba(0, 0, 0, 0.4)',
+                    }}
+                    className="flex items-center justify-center text-zinc-200 hover:text-white cursor-pointer transition-all duration-300 focus:outline-none border border-white/25 hover:border-white/50 shadow-2xl"
+                    title="Back to Sessions Preview"
+                  >
+                    <ArrowLeft className="w-5 h-5 text-zinc-100" />
+                  </LiquidGlass>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>
