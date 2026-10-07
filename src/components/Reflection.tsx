@@ -689,191 +689,179 @@ export const Reflection: React.FC<ReflectionProps> = ({ questions, onBurnAll, on
             onClick={() => setSessionsModalOpen(false)}
           >
             <motion.div
-              initial={{ scale: 0.92, opacity: 0, y: 20 }}
+              initial={{ scale: 0.94, opacity: 0, y: 16 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.92, opacity: 0, y: 20 }}
-              transition={{ duration: 0.3 }}
-              className="w-full max-w-2xl max-h-[90dvh] flex flex-col"
+              exit={{ scale: 0.94, opacity: 0, y: 16 }}
+              transition={{ duration: 0.25 }}
+              className="w-full max-w-2xl max-h-[88dvh] bg-[#0c0e16]/95 backdrop-blur-3xl rounded-3xl border border-white/20 shadow-[0_25px_60px_rgba(0,0,0,0.95),inset_0_1px_1px_rgba(255,255,255,0.25)] flex flex-col overflow-hidden p-5 sm:p-6"
               onClick={(e) => e.stopPropagation()}
             >
-              <LiquidGlass
-                aberrationIntensity={1.8}
-                blurAmount={0.1}
-                borderRadius={28}
-                displacementScale={35}
-                elasticity={0.2}
-                padding="24px 24px"
-                saturation={110}
-                style={{
-                  background: 'linear-gradient(135deg, rgba(20, 24, 35, 0.92) 0%, rgba(10, 12, 18, 0.96) 100%)',
-                  boxShadow: 'inset 0 1px 2px rgba(255, 255, 255, 0.25), 0 25px 60px rgba(0, 0, 0, 0.8)',
-                }}
-                className="w-full border border-white/20 flex flex-col max-h-[88dvh] overflow-hidden"
-              >
-                {/* Header */}
-                <div className="flex items-center justify-between pb-4 border-b border-white/10 shrink-0">
-                  <div className="flex items-center gap-2.5">
-                    <History className="w-5 h-5 text-cyan-300" />
-                    <div>
-                      <h2 className="text-base sm:text-lg font-mono font-bold tracking-wider text-white uppercase">
-                        Previous Ritual Sessions
-                      </h2>
-                      <span className="text-[11px] font-mono text-zinc-400">
-                        Longitudinal reflection archives saved per user isolation
-                      </span>
-                    </div>
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3.5 border-b border-white/10 shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-400/30 text-cyan-300">
+                    <History className="w-4 h-4" />
                   </div>
-                  <button
-                    onClick={() => setSessionsModalOpen(false)}
-                    className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors cursor-pointer text-xs font-mono"
-                  >
-                    ✕
-                  </button>
+                  <div>
+                    <h2 className="text-sm sm:text-base font-mono font-bold tracking-wider text-white uppercase">
+                      Previous Ritual Sessions
+                    </h2>
+                    <span className="text-[11px] font-mono text-zinc-400">
+                      Longitudinal reflection archives saved per user isolation
+                    </span>
+                  </div>
                 </div>
+                <button
+                  onClick={() => setSessionsModalOpen(false)}
+                  className="px-2.5 py-1 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors cursor-pointer text-xs font-mono border border-white/10"
+                >
+                  Close ✕
+                </button>
+              </div>
 
-                {/* Content: Sessions grouped by date */}
-                <div className="flex-1 overflow-y-auto space-y-6 my-4 pr-1 custom-scrollbar">
-                  {sessionsLoading ? (
-                    <div className="flex flex-col items-center justify-center py-16 space-y-3">
-                      <div className="w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-                      <span className="text-xs font-mono text-cyan-300 tracking-wider">
-                        Retrieving authenticated user records...
-                      </span>
-                    </div>
-                  ) : sessionsList.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 space-y-2 text-center">
-                      <History className="w-8 h-8 text-zinc-500 mb-2" />
-                      <p className="text-sm font-mono text-zinc-300">No previous sessions found</p>
-                      <p className="text-xs font-mono text-zinc-400">
-                        Complete your doubts and reflections to archive them here.
-                      </p>
-                    </div>
-                  ) : (
-                    sessionsList.map((session, sIdx) => (
-                      <div key={session.sessionId || sIdx} className="space-y-3">
-                        {/* Session Date Badge Header */}
-                        <div className="sticky top-0 z-20 flex items-center justify-between py-1.5 px-3 rounded-lg bg-black/70 backdrop-blur-md border border-white/10 shadow-sm">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-                            <span className="text-xs font-mono font-semibold text-cyan-200 tracking-wider">
-                              {session.dateLabel}
-                            </span>
-                          </div>
-                          <span className="text-[11px] font-mono text-zinc-400">
-                            {session.entries.length} {session.entries.length === 1 ? 'entry' : 'entries'}
+              {/* Content: Sessions grouped by date */}
+              <div className="flex-1 overflow-y-auto space-y-6 my-4 pr-1.5 custom-scrollbar min-h-0">
+                {sessionsLoading ? (
+                  <div className="flex flex-col items-center justify-center py-20 space-y-3">
+                    <div className="w-7 h-7 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-xs font-mono text-cyan-300 tracking-wider">
+                      Retrieving authenticated user records...
+                    </span>
+                  </div>
+                ) : sessionsList.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-20 space-y-2 text-center">
+                    <History className="w-9 h-9 text-zinc-500 mb-2" />
+                    <p className="text-sm font-mono text-zinc-300">No previous sessions found</p>
+                    <p className="text-xs font-mono text-zinc-400">
+                      Complete your doubts and reflections to archive them here.
+                    </p>
+                  </div>
+                ) : (
+                  sessionsList.map((session, sIdx) => (
+                    <div key={session.sessionId || sIdx} className="space-y-3">
+                      {/* Session Date Badge Header */}
+                      <div className="sticky top-0 z-20 flex items-center justify-between py-1.5 px-3 rounded-lg bg-black/80 backdrop-blur-md border border-white/10 shadow-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                          <span className="text-xs font-mono font-semibold text-cyan-200 tracking-wider">
+                            {session.dateLabel}
                           </span>
                         </div>
-
-                        {/* List of Entries for this session with the exact same UI as the reviewing section */}
-                        <div className="space-y-3">
-                          {session.entries.map((entry, idx) => {
-                            const isExpanded = !!sessionsExpandedMap[entry.id];
-
-                            return (
-                              <motion.div
-                                key={entry.id}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: idx * 0.04 }}
-                              >
-                                <LiquidGlass
-                                  aberrationIntensity={1.5}
-                                  blurAmount={0.04}
-                                  borderRadius={20}
-                                  displacementScale={30}
-                                  elasticity={0.2}
-                                  padding="18px 22px"
-                                  saturation={120}
-                                  glowOnHoverOnly={true}
-                                  onClick={() => toggleSessionEntryExpand(entry.id)}
-                                  style={{
-                                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%)',
-                                    boxShadow: 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.4), 0 10px 30px rgba(0, 0, 0, 0.3)',
-                                  }}
-                                  className="w-full border border-white/25 hover:border-white/45 transition-all duration-300 cursor-pointer"
-                                >
-                                  <div className="w-full flex flex-col space-y-3 text-left">
-                                    {/* Card Header: Entry Number & Expand Toggle */}
-                                    <div className="flex items-center justify-between gap-4 pb-0.5 border-b border-white/10 pb-2">
-                                      <span className="text-xs font-mono font-semibold text-cyan-300 uppercase tracking-[0.2em]">
-                                        ENTRY {idx + 1}
-                                      </span>
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-[11px] font-mono text-zinc-400">
-                                          {isExpanded ? 'Collapse' : 'Tap to expand'}
-                                        </span>
-                                        {isExpanded ? (
-                                          <ChevronUp className="w-4 h-4 text-cyan-300" />
-                                        ) : (
-                                          <ChevronDown className="w-4 h-4 text-zinc-400" />
-                                        )}
-                                      </div>
-                                    </div>
-
-                                    {/* 1. Original Question */}
-                                    <div className="space-y-1">
-                                      <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest font-semibold block">
-                                        ORIGINAL DOUBT
-                                      </span>
-                                      <div className={`text-sm sm:text-base font-sans text-zinc-200 font-normal leading-relaxed ${!isExpanded ? 'line-clamp-1' : ''}`}>
-                                        "{entry.question}"
-                                      </div>
-                                    </div>
-
-                                    <AnimatePresence>
-                                      {isExpanded && (
-                                        <motion.div
-                                          initial={{ opacity: 0, height: 0 }}
-                                          animate={{ opacity: 1, height: 'auto' }}
-                                          exit={{ opacity: 0, height: 0 }}
-                                          transition={{ duration: 0.25 }}
-                                          className="space-y-3 pt-2 border-t border-white/10 overflow-hidden"
-                                        >
-                                          {/* 2. Rephrased Narration */}
-                                          {entry.rephrasedText && (
-                                            <div className="space-y-1 bg-white/[0.03] p-3 rounded-xl border border-white/10">
-                                              <span className="text-[10px] font-mono text-cyan-300 uppercase tracking-widest font-semibold block">
-                                                THIRD-PERSON NARRATION
-                                              </span>
-                                              <p className="text-sm font-serif italic text-zinc-200 leading-relaxed">
-                                                {entry.rephrasedText}
-                                              </p>
-                                            </div>
-                                          )}
-
-                                          {/* 3. Your Response / Answer */}
-                                          <div className="space-y-1 bg-white/[0.02] p-3 rounded-xl border border-white/5">
-                                            <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest font-semibold block">
-                                              YOUR RESPONSE
-                                            </span>
-                                            {entry.skipped ? (
-                                              <p className="text-sm font-sans italic text-zinc-400">[Skipped]</p>
-                                            ) : entry.answer ? (
-                                              <p className="text-sm sm:text-base font-sans text-zinc-100 leading-relaxed whitespace-pre-wrap">
-                                                {entry.answer}
-                                              </p>
-                                            ) : (
-                                              <p className="text-sm font-sans italic text-zinc-400">[No response provided]</p>
-                                            )}
-                                          </div>
-                                        </motion.div>
-                                      )}
-                                    </AnimatePresence>
-                                  </div>
-                                </LiquidGlass>
-                              </motion.div>
-                            );
-                          })}
-                        </div>
+                        <span className="text-[11px] font-mono text-zinc-400">
+                          {session.entries.length} {session.entries.length === 1 ? 'entry' : 'entries'}
+                        </span>
                       </div>
-                    ))
-                  )}
-                </div>
 
-                <div className="pt-2 border-t border-white/10 text-[10px] font-mono text-zinc-400 text-center shrink-0">
-                  User isolated session logs stored securely in Supabase
-                </div>
-              </LiquidGlass>
+                      {/* List of Entries for this session with the exact same UI as the reviewing section */}
+                      <div className="space-y-3">
+                        {session.entries.map((entry, idx) => {
+                          const isExpanded = !!sessionsExpandedMap[entry.id];
+
+                          return (
+                            <motion.div
+                              key={entry.id}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: idx * 0.04 }}
+                            >
+                              <LiquidGlass
+                                aberrationIntensity={1.5}
+                                blurAmount={0.04}
+                                borderRadius={20}
+                                displacementScale={30}
+                                elasticity={0.2}
+                                padding="18px 22px"
+                                saturation={120}
+                                glowOnHoverOnly={true}
+                                onClick={() => toggleSessionEntryExpand(entry.id)}
+                                style={{
+                                  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%)',
+                                  boxShadow: 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.4), 0 10px 30px rgba(0, 0, 0, 0.3)',
+                                }}
+                                className="w-full border border-white/25 hover:border-white/45 transition-all duration-300 cursor-pointer"
+                              >
+                                <div className="w-full flex flex-col space-y-3 text-left">
+                                  {/* Card Header: Entry Number & Expand Toggle */}
+                                  <div className="flex items-center justify-between gap-4 pb-0.5 border-b border-white/10 pb-2">
+                                    <span className="text-xs font-mono font-semibold text-cyan-300 uppercase tracking-[0.2em]">
+                                      ENTRY {idx + 1}
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[11px] font-mono text-zinc-400">
+                                        {isExpanded ? 'Collapse' : 'Tap to expand'}
+                                      </span>
+                                      {isExpanded ? (
+                                        <ChevronUp className="w-4 h-4 text-cyan-300" />
+                                      ) : (
+                                        <ChevronDown className="w-4 h-4 text-zinc-400" />
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* 1. Original Question */}
+                                  <div className="space-y-1">
+                                    <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest font-semibold block">
+                                      ORIGINAL DOUBT
+                                    </span>
+                                    <div className={`text-sm sm:text-base font-sans text-zinc-200 font-normal leading-relaxed ${!isExpanded ? 'line-clamp-1' : ''}`}>
+                                      "{entry.question}"
+                                    </div>
+                                  </div>
+
+                                  <AnimatePresence>
+                                    {isExpanded && (
+                                      <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        transition={{ duration: 0.25 }}
+                                        className="space-y-3 pt-2 border-t border-white/10 overflow-hidden"
+                                      >
+                                        {/* 2. Rephrased Narration */}
+                                        {entry.rephrasedText && (
+                                          <div className="space-y-1 bg-white/[0.03] p-3 rounded-xl border border-white/10">
+                                            <span className="text-[10px] font-mono text-cyan-300 uppercase tracking-widest font-semibold block">
+                                              THIRD-PERSON NARRATION
+                                            </span>
+                                            <p className="text-sm font-serif italic text-zinc-200 leading-relaxed">
+                                              {entry.rephrasedText}
+                                            </p>
+                                          </div>
+                                        )}
+
+                                        {/* 3. Your Response / Answer */}
+                                        <div className="space-y-1 bg-white/[0.02] p-3 rounded-xl border border-white/5">
+                                          <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest font-semibold block">
+                                            YOUR RESPONSE
+                                          </span>
+                                          {entry.skipped ? (
+                                            <p className="text-sm font-sans italic text-zinc-400">[Skipped]</p>
+                                          ) : entry.answer ? (
+                                            <p className="text-sm sm:text-base font-sans text-zinc-100 leading-relaxed whitespace-pre-wrap">
+                                              {entry.answer}
+                                            </p>
+                                          ) : (
+                                            <p className="text-sm font-sans italic text-zinc-400">[No response provided]</p>
+                                          )}
+                                        </div>
+                                      </motion.div>
+                                    )}
+                                  </AnimatePresence>
+                                </div>
+                              </LiquidGlass>
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="pt-3 border-t border-white/10 text-[10px] font-mono text-zinc-400 text-center shrink-0">
+                User isolated session logs stored securely in Supabase
+              </div>
             </motion.div>
           </motion.div>
         )}
