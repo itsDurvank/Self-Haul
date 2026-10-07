@@ -786,15 +786,6 @@ export const Reflection: React.FC<ReflectionProps> = ({ questions, onBurnAll, on
                     </span>
                   </div>
 
-                  <button
-                    onClick={() => {
-                      setSelectedSession(null);
-                      setSessionsModalOpen(false);
-                    }}
-                    className="flex items-center gap-2 px-5 py-2 rounded-full bg-black/50 hover:bg-black/75 backdrop-blur-xl border border-white/15 hover:border-white/30 text-xs font-mono tracking-[0.2em] uppercase text-zinc-300 hover:text-white transition-all duration-200 cursor-pointer shadow-[0_4px_20px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.15)]"
-                  >
-                    <span>Close ✕</span>
-                  </button>
                 </div>
 
                 {/* Scrollable Q&A Cards matching reviewing section UI */}
