@@ -8,7 +8,6 @@ import { formatAsText, formatAsMarkdown, downloadFile } from '@/lib/export';
 import { soundEngine } from '@/lib/audio';
 import { Download, Copy, Flame, RotateCcw, Check, FileText, Sparkles, ArrowLeft, ChevronDown, ChevronUp, Send, MessageSquare, History } from 'lucide-react';
 import { LiquidGlass } from '@/components/ui/LiquidGlass';
-import { LiquidChrome } from '@/components/ui/LiquidChrome';
 
 interface ChatMessage {
   id: string;
@@ -681,27 +680,16 @@ export const Reflection: React.FC<ReflectionProps> = ({ questions, onBurnAll, on
         )}
       </AnimatePresence>
 
-      {/* Sessions Full-Screen View with LiquidChrome background */}
+      {/* Sessions Full-Screen View */}
       <AnimatePresence>
         {sessionsModalOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.25 }}
             className="fixed inset-0 z-50 bg-[#030306] overflow-y-auto custom-scrollbar flex flex-col text-white select-none"
           >
-            {/* Liquid Chrome Background Layer from Private Ritual */}
-            <div className="fixed inset-0 z-0 opacity-70 pointer-events-none">
-              <LiquidChrome
-                baseColor={[0.1, 0.1, 0.1]}
-                speed={0.25}
-                amplitude={0.35}
-                frequencyX={3}
-                frequencyY={3}
-                interactive={false}
-              />
-            </div>
 
             {/* SCREEN 1: THE SESSIONS GRID (Strictly just boxes) */}
             {!selectedSession ? (
